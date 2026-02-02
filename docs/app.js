@@ -33,7 +33,7 @@ async function searchGuild() {
 
 async function fetchGuildProfile(guildName) {
     const apiUrl = `https://query.idleclans.com/api/Clan/logs/clan/${guildName}`;
-    const proxied = `https://thingproxy.freeboard.io/fetch/${apiUrl}`;
+    const proxied = `https://thingproxy.freeboard.io/fetch/${apiUrl}`; //previous proxy corsproxy.io stoped working
 
     const res = await fetch(proxied);
     if (!res.ok) throw new Error("Guild not found");
