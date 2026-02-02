@@ -1,34 +1,40 @@
-<!-- docs/index.html -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>IdleClan Info</title>
+    <title>IdleClan Info Dashboard</title>
 
-    <!-- Load your CSS (correct path for GitHub Pages) -->
+    <!-- Load CSS (same folder as index.html) -->
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<h1>IdleClan Info</h1>
+    <h1>IdleClan Info</h1>
 
-<div class="dashboard-grid">
-    <section id="search-section">
-        <input type="text" id="guild-input" placeholder="Enter Clan Name...">
-        <button onclick="searchGuild()">Search</button>
+    <div id="search-bar">
+        <input 
+            type="text" 
+            id="guild-input" 
+            placeholder="Enter Clan Name..."
+        >
+        <button id="search-button" onclick="searchGuild()">Search</button>
+    </div>
 
-        <!-- Load your JS (correct path) -->
-        <script src="app.js"></script>
+    <!-- Results container -->
+    <div id="results"></div>
 
-        <div id="results"></div>
-    </section>
-    
-    <section id="weekly-rankings">
-        <!-- JS will populate Top 10 cards here -->
-    </section>
-</div>
+    <!-- Press Enter to search -->
+    <script>
+        document.getElementById("guild-input").addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                searchGuild();
+            }
+        });
+    </script>
+
+    <!-- Load JS (same folder as index.html) -->
+    <script src="app.js"></script>
 
 </body>
 </html>
