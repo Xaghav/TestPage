@@ -122,44 +122,80 @@ function getRankInfo(skill) {
         return { rank: yourRank ?? "N/A", neededText: "Not enough data", progress: 0 };
     }
 
+    // Common references
+    const topOne = type === "speed" ? top10[0].bestTime : top10[0].score;
+    const topTen = type === "speed" ? top10[9].bestTime : top10[9].score;
+
+    // ------------------------------
+    // CASE 1 — You are in the Top 10
+    // ------------------------------
     if (yourRank && yourRank <= 10) {
         const index = yourRank - 1;
-        if (index === 0) return { rank: yourRank, neededText: "You are Rank #1", progress: 100 };
+
+        // Rank 1 → perfect
+        if (index === 0) {
+            return { rank: yourRank, neededText: "You are Rank #1", progress: 100 };
+        }
 
         const above = top10[index - 1];
 
+        // SCORE LOGIC
         if (type === "score") {
             const diff = above.score - yourScore;
-            const progress = Math.min(100, (yourScore / above.score) * 100);
+            const progress = Math.min(100, (yourScore / topOne) * 100);
             return { rank: yourRank, neededText: `${diff} more points`, progress };
         }
 
+        // SPEED LOGIC
         if (type === "speed") {
             const diff = yourBestTime - above.bestTime;
-            const worst = top10[9].bestTime;
-            const progress = Math.min(100, ((worst - yourBestTime) / (worst - above.bestTime)) * 100);
-            return { rank: yourRank, neededText: `${diff} ms faster`, progress };
+
+            // Clamp your time between topOne and topTen
+            const clamped = Math.min(Math.max(yourBestTime, topOne), topTen);
+
+            const progress = ((topTen - clamped) / (topTen - topOne)) * 100;
+
+            return {
+                rank: yourRank,
+                neededText: `${diff} ms slower`,
+                progress: Math.round(progress)
+            };
         }
     }
 
-    const tenth = top10[9];
+    // ------------------------------
+    // CASE 2 — You are NOT in the Top 10
+    // ------------------------------
 
+    // SCORE LOGIC
     if (type === "score") {
-        const diff = tenth.score - (yourScore ?? 0);
-        const progress = Math.min(100, (yourScore / tenth.score) * 100);
+        const diff = topTen - (yourScore ?? 0);
+        const progress = Math.min(100, ((yourScore ?? 0) / topTen) * 100);
         return { rank: "Not in Top 10", neededText: `${diff} more points`, progress };
     }
 
+    // SPEED LOGIC
     if (type === "speed" && yourBestTime != null) {
-        const diff = yourBestTime - tenth.bestTime;
-        const worst = tenth.bestTime;
-        const best = top10[0].bestTime;
-        const progress = Math.min(100, ((worst - yourBestTime) / (worst - best)) * 100);
-        return { rank: "Not in Top 10", neededText: `${diff} ms faster`, progress };
+        const diff = yourBestTime - topTen;
+
+        // Clamp your time between topOne and topTen
+        const clamped = Math.min(Math.max(yourBestTime, topOne), topTen);
+
+        const progress = ((topTen - clamped) / (topTen - topOne)) * 100;
+
+        return {
+            rank: "Not in Top 10",
+            neededText: `${diff} ms slower`,
+            progress: Math.round(progress)
+        };
     }
 
+    // ------------------------------
+    // CASE 3 — No performance recorded
+    // ------------------------------
     return { rank: yourRank ?? "N/A", neededText: "No performance recorded", progress: 0 };
 }
+
 
 // ------------------------------
 // SORTING + FILTERING
