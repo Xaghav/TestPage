@@ -184,6 +184,13 @@ function filterSkills(skills, merged, filterBy) {
 // ---------------- RENDERING ----------------
 
 function renderDashboard(guildName, merged) {
+
+    // ⭐ Preserve UI state before re-render
+    const prevSort = document.getElementById("sort-select")?.value || "objective";
+    const prevFilter = document.getElementById("filter-select")?.value || "all";
+    const prevSearch = document.getElementById("overview-search")?.value || "";
+    const prevCollapsed = document.getElementById("toggle-details")?.textContent === "Show Details";
+
     const resultsDiv = document.getElementById('results');
     resultsDiv.innerHTML = `
         <h2>${guildName} — Skill Overview</h2>
@@ -211,9 +218,21 @@ function renderDashboard(guildName, merged) {
         </div>
     `;
 
+    // ⭐ Restore UI state
+    document.getElementById("sort-select").value = prevSort;
+    document.getElementById("filter-select").value = prevFilter;
+    document.getElementById("overview-search").value = prevSearch;
+
     renderOverviewTable(guildName, merged);
     renderDetailedSections(guildName, merged);
 
+    // ⭐ Reapply collapse state
+    if (prevCollapsed) {
+        document.getElementById("toggle-details").textContent = "Show Details";
+        document.querySelectorAll(".skill-card").forEach(c => c.style.display = "none");
+    }
+
+    // ⭐ Attach listeners
     document.getElementById("sort-select").addEventListener("change", () => renderDashboard(guildName, merged));
     document.getElementById("filter-select").addEventListener("change", () => renderDashboard(guildName, merged));
     document.getElementById("overview-search").addEventListener("input", () => renderDashboard(guildName, merged));
