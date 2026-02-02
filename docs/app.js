@@ -424,7 +424,11 @@ function renderDetailedSections(guildName, merged) {
     const scoreSkills = Object.entries(merged).filter(([_, s]) => s.type === "score");
     const speedSkills = Object.entries(merged).filter(([_, s]) => s.type === "speed");
 
-    resultsDiv.innerHTML += `<h3 class="section-title score-title">Score-based</h3><div class="cards-grid score-grid"></div>`;
+    resultsDiv.insertAdjacentHTML("beforeend", `
+        <h3 class="section-title score-title">Score-based</h3>
+        <div class="cards-grid score-grid"></div>
+    `);
+
     const scoreGrid = resultsDiv.querySelector('.score-grid');
 
     scoreSkills.forEach(([objective, skill]) => {
