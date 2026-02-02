@@ -1,5 +1,6 @@
-// docs/app.js
-
+// ------------------------------
+// ENTRY: SEARCH GUILD
+// ------------------------------
 async function searchGuild() {
     const guildName = document.getElementById('guild-input').value.trim();
     const cacheUrl = './data/summary.json';
@@ -30,8 +31,9 @@ async function searchGuild() {
     }
 }
 
-// ---------------- API CALLS ----------------
-
+// ------------------------------
+// API CALLS
+// ------------------------------
 async function fetchGuildProfile(guildName) {
     const apiUrl = `https://query.idleclans.com/api/ClanCup/standings/${guildName}?gameMode=Default`;
     const res = await fetch(apiUrl);
@@ -43,11 +45,12 @@ async function fetchTop10Live() {
     const apiUrl = "https://query.idleclans.com/api/ClanCup/top-clans/current?gameMode=Default";
     const res = await fetch(apiUrl);
     if (!res.ok) throw new Error("Failed to fetch leaderboard");
-    return await res.json(); // correct shape
+    return await res.json();
 }
 
-// ---------------- NORMALIZERS ----------------
-
+// ------------------------------
+// NORMALIZERS
+// ------------------------------
 function normalizeProfile(profileArray) {
     const map = {};
     profileArray.forEach(entry => {
@@ -99,8 +102,9 @@ function mergeProfileAndLeaderboard(profileMap, leaderboardMap) {
     return merged;
 }
 
-// ---------------- RANK / PROGRESS LOGIC ----------------
-
+// ------------------------------
+// RANK / PROGRESS LOGIC
+// ------------------------------
 function getRankInfo(skill) {
     const { type, yourScore, yourBestTime, yourRank, top10 } = skill;
 
@@ -147,8 +151,9 @@ function getRankInfo(skill) {
     return { rank: yourRank ?? "N/A", neededText: "No performance recorded", progress: 0 };
 }
 
-// ---------------- SORTING + FILTERING ----------------
-
+// ------------------------------
+// SORTING + FILTERING
+// ------------------------------
 function sortSkills(skills, merged, sortBy) {
     return skills.sort(([aName], [bName]) => {
         const a = merged[aName];
@@ -158,10 +163,11 @@ function sortSkills(skills, merged, sortBy) {
             case "rank":
                 return (a.yourRank ?? 9999) - (b.yourRank ?? 9999);
 
-            case "score":
+            case "score": {
                 const aVal = a.type === "score" ? a.yourScore ?? 0 : -(a.yourBestTime ?? 9999999);
                 const bVal = b.type === "score" ? b.yourScore ?? 0 : -(b.yourBestTime ?? 9999999);
                 return bVal - aVal;
+            }
 
             case "progress":
                 return getRankInfo(b).progress - getRankInfo(a).progress;
@@ -173,7 +179,7 @@ function sortSkills(skills, merged, sortBy) {
 }
 
 function filterSkills(skills, merged, filterBy) {
-    return skills.filter(([name, skill]) => {
+    return skills.filter(([_, skill]) => {
         if (filterBy === "top10") return skill.yourRank && skill.yourRank <= 10;
         if (filterBy === "score") return skill.type === "score";
         if (filterBy === "speed") return skill.type === "speed";
@@ -181,15 +187,77 @@ function filterSkills(skills, merged, filterBy) {
     });
 }
 
-// ---------------- RENDERING ----------------
+// ------------------------------
+// MODAL HELPERS
+// ------------------------------
+function openModal(html) {
+    const overlay = document.getElementById("modal-overlay");
+    const content = document.getElementById("modal-content");
+    if (!overlay || !content) return;
+    content.innerHTML = html;
+    overlay.classList.remove("hidden");
+}
 
+function closeModal() {
+    const overlay = document.getElementById("modal-overlay");
+    if (!overlay) return;
+    overlay.classList.add("hidden");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const closeBtn = document.getElementById("modal-close");
+    const overlay = document.getElementById("modal-overlay");
+
+    if (closeBtn) closeBtn.addEventListener("click", closeModal);
+    if (overlay) {
+        overlay.addEventListener("click", e => {
+            if (e.target.id === "modal-overlay") closeModal();
+        });
+    }
+
+    document.addEventListener("keydown", e => {
+        if (e.key === "Escape") closeModal();
+    });
+});
+
+// ------------------------------
+// GLOBAL COLLAPSE / EXPAND LOGIC
+// ------------------------------
+let allCollapsed = false;
+
+function applyGlobalCollapseState() {
+    document.querySelectorAll(".skill-card").forEach(card => {
+        card.classList.toggle("collapsed-card", allCollapsed);
+
+        const btn = card.querySelector(".collapse-btn");
+        if (btn) btn.textContent = allCollapsed ? "Expand" : "Collapse";
+    });
+
+    const globalBtn = document.getElementById("toggle-all");
+    if (globalBtn) globalBtn.textContent = allCollapsed ? "Expand All" : "Collapse All";
+}
+
+function updateGlobalButtonState() {
+    const cards = [...document.querySelectorAll(".skill-card")];
+    const collapsedCount = cards.filter(c => c.classList.contains("collapsed-card")).length;
+
+    if (collapsedCount === cards.length) {
+        allCollapsed = true;
+    } else if (collapsedCount === 0) {
+        allCollapsed = false;
+    }
+
+    const globalBtn = document.getElementById("toggle-all");
+    if (globalBtn) globalBtn.textContent = allCollapsed ? "Expand All" : "Collapse All";
+}
+
+// ------------------------------
+// RENDER DASHBOARD
+// ------------------------------
 function renderDashboard(guildName, merged) {
-
-    // ⭐ Preserve UI state before re-render
     const prevSort = document.getElementById("sort-select")?.value || "objective";
     const prevFilter = document.getElementById("filter-select")?.value || "all";
     const prevSearch = document.getElementById("overview-search")?.value || "";
-    const prevCollapsed = document.getElementById("toggle-details")?.textContent === "Show Details";
 
     const resultsDiv = document.getElementById('results');
     resultsDiv.innerHTML = `
@@ -213,40 +281,33 @@ function renderDashboard(guildName, merged) {
             </select>
 
             <input id="overview-search" type="text" placeholder="Search skills...">
-
-            <button id="toggle-details">Hide Details</button>
         </div>
     `;
 
-    // ⭐ Restore UI state
     document.getElementById("sort-select").value = prevSort;
     document.getElementById("filter-select").value = prevFilter;
     document.getElementById("overview-search").value = prevSearch;
 
     renderOverviewTable(guildName, merged);
+
+    resultsDiv.innerHTML += `
+        <h2>Detailed Breakdown</h2>
+        <button id="toggle-all" class="global-collapse-btn">Collapse All</button>
+    `;
+
     renderDetailedSections(guildName, merged);
 
-    // ⭐ Reapply collapse state
-    if (prevCollapsed) {
-        document.getElementById("toggle-details").textContent = "Show Details";
-        document.querySelectorAll(".skill-card").forEach(c => c.style.display = "none");
-    }
-
-    // ⭐ Attach listeners
-    document.getElementById("sort-select").addEventListener("change", () => renderDashboard(guildName, merged));
-    document.getElementById("filter-select").addEventListener("change", () => renderDashboard(guildName, merged));
-    document.getElementById("overview-search").addEventListener("keydown", (e) => { if (e.key === "Enter") { renderDashboard(guildName, merged); } });
-
-    document.getElementById("toggle-details").addEventListener("click", () => {
-        const cards = document.querySelectorAll(".skill-card");
-        const btn = document.getElementById("toggle-details");
-        const hiding = btn.textContent === "Hide Details";
-
-        cards.forEach(c => c.style.display = hiding ? "none" : "block");
-        btn.textContent = hiding ? "Show Details" : "Hide Details";
+    document.getElementById("toggle-all").addEventListener("click", () => {
+        allCollapsed = !allCollapsed;
+        applyGlobalCollapseState();
     });
+
+    applyGlobalCollapseState();
 }
 
+// ------------------------------
+// OVERVIEW TABLE
+// ------------------------------
 function renderOverviewTable(guildName, merged) {
     const resultsDiv = document.getElementById('results');
 
@@ -273,18 +334,19 @@ function renderOverviewTable(guildName, merged) {
 
     skills.forEach(([objective, skill]) => {
         const info = getRankInfo(skill);
-        const label = skill.type === "score" ? skill.yourScore : skill.yourBestTime;
+        const labelVal = skill.type === "score" ? skill.yourScore : skill.yourBestTime;
         const tenth = skill.top10[9];
         const threshold = skill.type === "score" ? tenth.score : tenth.bestTime;
 
         const status = info.rank === "Not in Top 10" ? "Below Top 10" : `Top ${info.rank}`;
-        const statusClass = status.includes("Top") ? "status-top" : "status-below";
+        const statusClass = status.startsWith("Top") ? "status-top" : "status-below";
+        const rowClass = status.startsWith("Top") ? "status-row-top" : "status-row-below";
 
         html += `
-            <tr>
+            <tr class="${rowClass} overview-row" data-objective="${objective}">
                 <td>${objective}</td>
                 <td>${info.rank}</td>
-                <td>${label ?? "—"}</td>
+                <td>${labelVal ?? "—"}</td>
                 <td>${threshold}</td>
                 <td class="${statusClass}">${status}</td>
             </tr>
@@ -294,11 +356,54 @@ function renderOverviewTable(guildName, merged) {
     html += `</table>`;
 
     resultsDiv.innerHTML += html;
+
+    setTimeout(() => {
+        document.querySelectorAll(".overview-row").forEach(row => {
+            row.addEventListener("click", () => {
+                const obj = row.dataset.objective;
+                const skill = merged[obj];
+                const info = getRankInfo(skill);
+
+                const label = skill.type === "score" ? "Score" : "Time (ms)";
+                const yourValue = skill.type === "score" ? skill.yourScore : skill.yourBestTime;
+
+                const modalHTML = `
+                    <h2>${obj}</h2>
+                    <p><strong>Your ${label}:</strong> ${yourValue ?? "—"}</p>
+                    <p><strong>Your Rank:</strong> ${info.rank}</p>
+                    <p><strong>Needed:</strong> ${info.neededText}</p>
+
+                    <div class="progress-wrapper">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width:${info.progress}%;"></div>
+                        </div>
+                        <span class="progress-text">${Math.round(info.progress)}% progress</span>
+                    </div>
+
+                    <h3>Top 10</h3>
+                    <table class="leaderboard">
+                        <tr><th>Rank</th><th>Clan</th><th>${label}</th></tr>
+                        ${skill.top10.map((c, i) => `
+                            <tr>
+                                <td>${i + 1}</td>
+                                <td>${c.clanName}</td>
+                                <td>${skill.type === "score" ? c.score : c.bestTime}</td>
+                            </tr>
+                        `).join("")}
+                    </table>
+                `;
+
+                openModal(modalHTML);
+            });
+        });
+    }, 0);
 }
 
+// ------------------------------
+// DETAILED SECTIONS
+// ------------------------------
 function renderDetailedSections(guildName, merged) {
     const resultsDiv = document.getElementById('results');
-    resultsDiv.innerHTML += `<h2>Detailed Breakdown</h2>`;
 
     const scoreSkills = Object.entries(merged).filter(([_, s]) => s.type === "score");
     const speedSkills = Object.entries(merged).filter(([_, s]) => s.type === "speed");
@@ -316,8 +421,21 @@ function renderDetailedSections(guildName, merged) {
     speedSkills.forEach(([objective, skill]) => {
         speedGrid.innerHTML += renderSkillCard(guildName, objective, skill);
     });
+
+    document.querySelectorAll(".skill-card .collapse-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const card = btn.closest(".skill-card");
+            const collapsed = card.classList.toggle("collapsed-card");
+            btn.textContent = collapsed ? "Expand" : "Collapse";
+
+            updateGlobalButtonState();
+        });
+    });
 }
 
+// ------------------------------
+// SKILL CARD RENDER
+// ------------------------------
 function renderSkillCard(guildName, objective, skill) {
     const info = getRankInfo(skill);
     const label = skill.type === "score" ? "Score" : "Time (ms)";
@@ -325,7 +443,11 @@ function renderSkillCard(guildName, objective, skill) {
 
     return `
         <div class="skill-card ${skill.type === "speed" ? "speed-card" : "score-card"}">
-            <h4>${objective}</h4>
+            <div class="card-header-row">
+                <h4>${objective}</h4>
+                <button class="collapse-btn">Collapse</button>
+            </div>
+
             <div class="meta">
                 <div><span class="label">Your ${label}:</span> <span>${yourValue ?? "—"}</span></div>
                 <div><span class="label">Your Rank:</span> <span>${info.rank}</span></div>

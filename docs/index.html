@@ -3,8 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>IdleClan Info Dashboard</title>
-
-    <!-- Load CSS (same folder as index.html) -->
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -13,28 +11,27 @@
     <h1>IdleClan Info</h1>
 
     <div id="search-bar">
-        <input 
-            type="text" 
-            id="guild-input" 
-            placeholder="Enter Clan Name..."
-        >
+        <input type="text" id="guild-input" placeholder="Enter Clan Name...">
         <button id="search-button" onclick="searchGuild()">Search</button>
     </div>
 
-    <!-- Results container -->
     <div id="results"></div>
 
-    <!-- Press Enter to search -->
+    <!-- Enter key triggers search -->
     <script>
-        document.getElementById("guild-input").addEventListener("keydown", function (e) {
-            if (e.key === "Enter") {
-                searchGuild();
-            }
+        document.getElementById("guild-input").addEventListener("keydown", e => {
+            if (e.key === "Enter") searchGuild();
         });
     </script>
 
-    <!-- Load JS (same folder as index.html) -->
-    <script src="app.js"></script>
+    <!-- Modal popup -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div id="modal-window" class="modal-window">
+            <button id="modal-close" class="modal-close">✕</button>
+            <div id="modal-content"></div>
+        </div>
+    </div>
 
+    <script src="app.js"></script>
 </body>
 </html>
