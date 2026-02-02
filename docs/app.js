@@ -1,5 +1,3 @@
-// docs/app.js
-
 // ------------------------------
 // ENTRY: SEARCH GUILD
 // ------------------------------
@@ -223,14 +221,43 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ------------------------------
+// GLOBAL COLLAPSE / EXPAND LOGIC
+// ------------------------------
+let allCollapsed = false;
+
+function applyGlobalCollapseState() {
+    document.querySelectorAll(".skill-card").forEach(card => {
+        card.classList.toggle("collapsed-card", allCollapsed);
+
+        const btn = card.querySelector(".collapse-btn");
+        if (btn) btn.textContent = allCollapsed ? "Expand" : "Collapse";
+    });
+
+    const globalBtn = document.getElementById("toggle-all");
+    if (globalBtn) globalBtn.textContent = allCollapsed ? "Expand All" : "Collapse All";
+}
+
+function updateGlobalButtonState() {
+    const cards = [...document.querySelectorAll(".skill-card")];
+    const collapsedCount = cards.filter(c => c.classList.contains("collapsed-card")).length;
+
+    if (collapsedCount === cards.length) {
+        allCollapsed = true;
+    } else if (collapsedCount === 0) {
+        allCollapsed = false;
+    }
+
+    const globalBtn = document.getElementById("toggle-all");
+    if (globalBtn) globalBtn.textContent = allCollapsed ? "Expand All" : "Collapse All";
+}
+
+// ------------------------------
 // RENDER DASHBOARD
 // ------------------------------
 function renderDashboard(guildName, merged) {
-    // Preserve UI state
     const prevSort = document.getElementById("sort-select")?.value || "objective";
     const prevFilter = document.getElementById("filter-select")?.value || "all";
     const prevSearch = document.getElementById("overview-search")?.value || "";
-    const prevGlobalHide = document.getElementById("toggle-details")?.dataset.state === "hidden";
 
     const resultsDiv = document.getElementById('results');
     resultsDiv.innerHTML = `
@@ -254,53 +281,28 @@ function renderDashboard(guildName, merged) {
             </select>
 
             <input id="overview-search" type="text" placeholder="Search skills...">
-
-            <button id="toggle-details" data-state="shown">Hide Details</button>
         </div>
     `;
 
-    // Restore state
     document.getElementById("sort-select").value = prevSort;
     document.getElementById("filter-select").value = prevFilter;
     document.getElementById("overview-search").value = prevSearch;
-    if (prevGlobalHide) {
-        const btn = document.getElementById("toggle-details");
-        btn.textContent = "Show Details";
-        btn.dataset.state = "hidden";
-    }
 
     renderOverviewTable(guildName, merged);
+
+    resultsDiv.innerHTML += `
+        <h2>Detailed Breakdown</h2>
+        <button id="toggle-all" class="global-collapse-btn">Collapse All</button>
+    `;
+
     renderDetailedSections(guildName, merged);
 
-    // Apply global hide state to Top-10 tables
-    if (prevGlobalHide) {
-        document.querySelectorAll(".skill-card").forEach(card => {
-            card.classList.add("hide-top10");
-        });
-    }
-
-    // Listeners
-    document.getElementById("sort-select").addEventListener("change", () => renderDashboard(guildName, merged));
-    document.getElementById("filter-select").addEventListener("change", () => renderDashboard(guildName, merged));
-
-    // Search only on Enter
-    document.getElementById("overview-search").addEventListener("keydown", e => {
-        if (e.key === "Enter") renderDashboard(guildName, merged);
+    document.getElementById("toggle-all").addEventListener("click", () => {
+        allCollapsed = !allCollapsed;
+        applyGlobalCollapseState();
     });
 
-    // Global hide: only hide Top-10 tables
-    document.getElementById("toggle-details").addEventListener("click", () => {
-        const btn = document.getElementById("toggle-details");
-        const hiding = btn.dataset.state !== "hidden";
-
-        document.querySelectorAll(".skill-card").forEach(card => {
-            if (hiding) card.classList.add("hide-top10");
-            else card.classList.remove("hide-top10");
-        });
-
-        btn.textContent = hiding ? "Show Details" : "Hide Details";
-        btn.dataset.state = hiding ? "hidden" : "shown";
-    });
+    applyGlobalCollapseState();
 }
 
 // ------------------------------
@@ -355,7 +357,6 @@ function renderOverviewTable(guildName, merged) {
 
     resultsDiv.innerHTML += html;
 
-    // Click row → modal
     setTimeout(() => {
         document.querySelectorAll(".overview-row").forEach(row => {
             row.addEventListener("click", () => {
@@ -403,7 +404,6 @@ function renderOverviewTable(guildName, merged) {
 // ------------------------------
 function renderDetailedSections(guildName, merged) {
     const resultsDiv = document.getElementById('results');
-    resultsDiv.innerHTML += `<h2>Detailed Breakdown</h2>`;
 
     const scoreSkills = Object.entries(merged).filter(([_, s]) => s.type === "score");
     const speedSkills = Object.entries(merged).filter(([_, s]) => s.type === "speed");
@@ -422,12 +422,13 @@ function renderDetailedSections(guildName, merged) {
         speedGrid.innerHTML += renderSkillCard(guildName, objective, skill);
     });
 
-    // Per-card collapse/expand (minimal text link)
     document.querySelectorAll(".skill-card .collapse-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             const card = btn.closest(".skill-card");
             const collapsed = card.classList.toggle("collapsed-card");
             btn.textContent = collapsed ? "Expand" : "Collapse";
+
+            updateGlobalButtonState();
         });
     });
 }
