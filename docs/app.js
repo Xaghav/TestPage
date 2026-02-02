@@ -335,8 +335,10 @@ function renderDashboard(guildName, merged) {
 
     // Reattach listeners AFTER rendering
     document.getElementById("sort-select").addEventListener("change", () => {
+        console.log("%cSHOT FIRED", "color: red; font-size: 20px; font-weight: bold;");
         renderDashboard(CURRENT_GUILD, CURRENT_MERGED);
     });
+
 
     document.getElementById("filter-select").addEventListener("change", () => {
         renderDashboard(CURRENT_GUILD, CURRENT_MERGED);
