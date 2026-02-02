@@ -6,25 +6,27 @@ async function searchGuild() {
 
     try {
         // 1. Fetch guild profile
-        const profile = await fetchGuildProfile(guildName);
+        const profileRaw = await fetchGuildProfile(guildName);
         const profileMap = normalizeProfile(profileRaw);
-        
-        // 2. Try loading weekly rankings from local file
-        let weeklyData;
+
+        // 2. Load weekly leaderboard (local cache → fallback to live)
+        let leaderboardRaw;
         try {
             const cacheResponse = await fetch(cacheUrl);
             if (!cacheResponse.ok) throw new Error("summary.json missing");
             const cachedData = await cacheResponse.json();
-            weeklyData = cachedData.weekly;
+            leaderboardRaw = cachedData.weekly;
         } catch (err) {
             console.warn("summary.json missing — fetching live top 10 instead");
-
-            // Fallback: fetch top 10 for Default/Woodcutting
-            weeklyData = await fetchTop10Fallback();
+            leaderboardRaw = await fetchTop10Fallback();
         }
-        
+
+        // Normalize leaderboard
         const leaderboardMap = normalizeLeaderboard(leaderboardRaw.data);
+
+        // Merge profile + leaderboard
         const merged = mergeProfileAndLeaderboard(profileMap, leaderboardMap);
+
         // 3. Display results
         displayGuildInfo(guildName, merged);
 
@@ -34,9 +36,13 @@ async function searchGuild() {
     }
 }
 
+
+// ---------------------------------------------------------
+// API CALLS
+// ---------------------------------------------------------
+
 async function fetchGuildProfile(guildName) {
-    const apiUrl = `https://query.idleclans.com/api/ClanCup/standings/${guildName}?gameMode=Default`; //`https://query.idleclans.com/api/Clan/logs/clan/${guildName}`;
-    // const proxied = `https://thingproxy.freeboard.io/fetch/${apiUrl}`; //previous proxy corsproxy.io stoped working
+    const apiUrl = `https://query.idleclans.com/api/ClanCup/standings/${guildName}?gameMode=Default`;
 
     const res = await fetch(apiUrl);
     if (!res.ok) throw new Error("Guild not found");
@@ -45,19 +51,20 @@ async function fetchGuildProfile(guildName) {
 }
 
 async function fetchTop10Fallback() {
-    const apiUrl = "https://query.idleclans.com/api/ClanCup/top-clans/current?gameMode=Default";//"https://query.idleclans.com/api/ClanCup/leaderboard/Default/Woodcutting";
-    // const proxied = `https://thingproxy.freeboard.io/fetch/${apiUrl}`;
+    const apiUrl = "https://query.idleclans.com/api/ClanCup/top-clans/current?gameMode=Default";
 
     const res = await fetch(apiUrl);
     if (!res.ok) throw new Error("Failed to fetch fallback leaderboard");
 
     const data = await res.json();
 
-    // API returns: { skillName: [ { clanName, score }, ... ] }
-    return {
-        data // array of top 10 clans
-    };
+    return { data };
 }
+
+
+// ---------------------------------------------------------
+// NORMALIZERS
+// ---------------------------------------------------------
 
 function normalizeLeaderboard(apiResponse) {
     const map = {};
@@ -104,6 +111,11 @@ function mergeProfileAndLeaderboard(profileMap, leaderboardMap) {
     return merged;
 }
 
+
+// ---------------------------------------------------------
+// RANK CALCULATION
+// ---------------------------------------------------------
+
 function getRankInfo(top10, yourScore, yourRank) {
     if (yourRank && yourRank <= 10) {
         const index = yourRank - 1;
@@ -131,20 +143,21 @@ function getRankInfo(top10, yourScore, yourRank) {
 // ---------------------------------------------------------
 // DISPLAY RESULTS
 // ---------------------------------------------------------
-function displayGuildInfo(guildName, profile, weeklyData) {
+
+function displayGuildInfo(guildName, merged) {
     const resultsDiv = document.getElementById('results');
     resultsDiv.innerHTML = `<h2>${guildName} — Skill Breakdown</h2>`;
 
     Object.entries(merged).forEach(([objective, data]) => {
-    const { yourScore, yourBestTime, yourRank, top10 } = data;
+        const { yourScore, yourBestTime, yourRank, top10 } = data;
 
-    const info = getRankInfo(top10, yourScore, yourRank);
-        
+        const info = getRankInfo(top10, yourScore, yourRank);
+
         resultsDiv.innerHTML += `
             <div class="skill-card">
-                <h3>${skillName}</h3>
+                <h3>${objective}</h3>
                 <table>
-                    <tr><td>Your Score:</td><td>${yourScore}</td></tr>
+                    <tr><td>Your Score:</td><td>${yourScore ?? "—"}</td></tr>
                     <tr><td>Your Rank:</td><td>${info.rank}</td></tr>
                     <tr><td>Needed:</td><td>${info.neededText}</td></tr>
                 </table>
@@ -164,4 +177,3 @@ function displayGuildInfo(guildName, profile, weeklyData) {
         `;
     });
 }
-
