@@ -339,8 +339,8 @@ function renderOverviewTable(guildName, merged) {
         const threshold = skill.type === "score" ? tenth.score : tenth.bestTime;
 
         const status = info.rank === "Not in Top 10" ? "Below Top 10" : `Top ${info.rank}`;
-        const statusClass = status.includes("Top") ? "status-top" : "status-below";
-        const rowClass = status.includes("Top") ? "status-row-top" : "status-row-below";
+        const statusClass = status.startsWith("Top") ? "status-top" : "status-below";
+        const rowClass = status.startsWith("Top") ? "status-row-top" : "status-row-below";
 
         html += `
             <tr class="${rowClass} overview-row" data-objective="${objective}">
