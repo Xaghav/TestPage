@@ -32,7 +32,7 @@ async function searchGuild() {
 }
 
 async function fetchGuildProfile(guildName) {
-    const apiUrl = `https://query.idleclans.com/api/Clan/logs/clan/${guildName}`;
+    const apiUrl = "https://query.idleclans.com/api/ClanCup/standings/${guildName}?gameMode=Default"; //`https://query.idleclans.com/api/Clan/logs/clan/${guildName}`;
     // const proxied = `https://thingproxy.freeboard.io/fetch/${apiUrl}`; //previous proxy corsproxy.io stoped working
 
     const res = await fetch(apiUrl);
