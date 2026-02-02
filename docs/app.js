@@ -293,51 +293,49 @@ function renderDashboard(guildName, merged) {
     document.getElementById("overview-search").value = prevSearch;
 
     // Render the overview table
-    renderOverviewTable(guildName, merged);
-
-    // ⭐ Reattach listeners AFTER rendering
+    const tableHTML = renderOverviewTable(guildName, merged);
+    resultsDiv.innerHTML += tableHTML;
+    
+    // Reattach listeners AFTER rendering
     document.getElementById("sort-select").addEventListener("change", () => {
         renderDashboard(guildName, merged);
     });
-
+    
     document.getElementById("filter-select").addEventListener("change", () => {
         renderDashboard(guildName, merged);
     });
-
+    
     document.getElementById("overview-search").addEventListener("input", () => {
         renderDashboard(guildName, merged);
     });
-
+    
     // Detailed breakdown section
     resultsDiv.innerHTML += `
         <h2>Detailed Breakdown</h2>
         <button id="toggle-all" class="global-collapse-btn">Collapse All</button>
     `;
-
+    
     renderDetailedSections(guildName, merged);
-
+    
     // Collapse all button
     document.getElementById("toggle-all").addEventListener("click", () => {
         allCollapsed = !allCollapsed;
         applyGlobalCollapseState();
     });
-
+    
     applyGlobalCollapseState();
-}
+
 
 
 // ------------------------------
 // OVERVIEW TABLE
 // ------------------------------
 function renderOverviewTable(guildName, merged) {
-    const resultsDiv = document.getElementById('results');
-
     const sortBy = document.getElementById("sort-select")?.value || "objective";
     const filterBy = document.getElementById("filter-select")?.value || "all";
     const searchTerm = document.getElementById("overview-search")?.value.toLowerCase() || "";
 
     let skills = Object.entries(merged);
-
     skills = filterSkills(skills, merged, filterBy);
     skills = sortSkills(skills, merged, sortBy);
     skills = skills.filter(([name]) => name.toLowerCase().includes(searchTerm));
@@ -359,12 +357,13 @@ function renderOverviewTable(guildName, merged) {
         const tenth = skill.top10[9];
         const threshold = skill.type === "score" ? tenth.score : tenth.bestTime;
 
-        const status = info.rank === "Not in Top 10" ? "Below Top 10" : `Top ${info.rank}`;
-        const statusClass = status.startsWith("Top") ? "status-top" : "status-below";
-        const rowClass = status.startsWith("Top") ? "status-row-top" : "status-row-below";
+        const isTop = info.rank !== "Not in Top 10";
+        const status = isTop ? `Top ${info.rank}` : "Below Top 10";
+        const statusClass = isTop ? "status-top" : "status-below";
+        const rowClass = isTop ? "status-row-top" : "status-row-below";
 
         html += `
-            <tr class="${rowClass} overview-row" data-objective="${objective}">
+            <tr class="overview-row" data-objective="${objective}">
                 <td>${objective}</td>
                 <td>${info.rank}</td>
                 <td>${labelVal ?? "—"}</td>
@@ -375,50 +374,9 @@ function renderOverviewTable(guildName, merged) {
     });
 
     html += `</table>`;
-
-    resultsDiv.innerHTML += html;
-
-    setTimeout(() => {
-        document.querySelectorAll(".overview-row").forEach(row => {
-            row.addEventListener("click", () => {
-                const obj = row.dataset.objective;
-                const skill = merged[obj];
-                const info = getRankInfo(skill);
-
-                const label = skill.type === "score" ? "Score" : "Time (ms)";
-                const yourValue = skill.type === "score" ? skill.yourScore : skill.yourBestTime;
-
-                const modalHTML = `
-                    <h2>${obj}</h2>
-                    <p><strong>Your ${label}:</strong> ${yourValue ?? "—"}</p>
-                    <p><strong>Your Rank:</strong> ${info.rank}</p>
-                    <p><strong>Needed:</strong> ${info.neededText}</p>
-
-                    <div class="progress-wrapper">
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width:${info.progress}%;"></div>
-                        </div>
-                        <span class="progress-text">${Math.round(info.progress)}% progress</span>
-                    </div>
-
-                    <h3>Top 10</h3>
-                    <table class="leaderboard">
-                        <tr><th>Rank</th><th>Clan</th><th>${label}</th></tr>
-                        ${skill.top10.map((c, i) => `
-                            <tr>
-                                <td>${i + 1}</td>
-                                <td>${c.clanName}</td>
-                                <td>${skill.type === "score" ? c.score : c.bestTime}</td>
-                            </tr>
-                        `).join("")}
-                    </table>
-                `;
-
-                openModal(modalHTML);
-            });
-        });
-    }, 0);
+    return html;
 }
+
 
 // ------------------------------
 // DETAILED SECTIONS
