@@ -1,6 +1,38 @@
+let CURRENT_GUILD = null;
+let CURRENT_MERGED = null;
+
 // ------------------------------
 // ENTRY: SEARCH GUILD
 // ------------------------------
+// async function searchGuild() {
+//     const guildName = document.getElementById('guild-input').value.trim();
+//     const cacheUrl = './data/summary.json';
+
+//     if (!guildName) return;
+
+//     try {
+//         const profileRaw = await fetchGuildProfile(guildName);
+//         const profileMap = normalizeProfile(profileRaw);
+
+//         let leaderboardRaw;
+//         try {
+//             const cacheResponse = await fetch(cacheUrl);
+//             if (!cacheResponse.ok) throw new Error("summary.json missing");
+//             const cachedData = await cacheResponse.json();
+//             leaderboardRaw = cachedData.weekly;
+//         } catch (err) {
+//             leaderboardRaw = await fetchTop10Live();
+//         }
+
+//         const leaderboardMap = normalizeLeaderboard(leaderboardRaw);
+//         const merged = mergeProfileAndLeaderboard(profileMap, leaderboardMap);
+
+//         renderDashboard(guildName, merged);
+
+//     } catch (err) {
+//         document.getElementById('results').innerHTML = `<p>Error: ${err.message}</p>`;
+//     }
+// }
 async function searchGuild() {
     const guildName = document.getElementById('guild-input').value.trim();
     const cacheUrl = './data/summary.json';
@@ -24,12 +56,17 @@ async function searchGuild() {
         const leaderboardMap = normalizeLeaderboard(leaderboardRaw);
         const merged = mergeProfileAndLeaderboard(profileMap, leaderboardMap);
 
+        // ⭐ Store global state
+        CURRENT_GUILD = guildName;
+        CURRENT_MERGED = merged;
+
         renderDashboard(guildName, merged);
 
     } catch (err) {
         document.getElementById('results').innerHTML = `<p>Error: ${err.message}</p>`;
     }
 }
+
 
 // ------------------------------
 // API CALLS
@@ -294,26 +331,26 @@ function renderDashboard(guildName, merged) {
 
     // Insert overview table
     const tableHTML = renderOverviewTable(guildName, merged);
-    resultsDiv.innerHTML += tableHTML;
+    resultsDiv.insertAdjacentHTML("beforeend", tableHTML);
 
     // Reattach listeners AFTER rendering
     document.getElementById("sort-select").addEventListener("change", () => {
-        renderDashboard(guildName, merged);
+        renderDashboard(CURRENT_GUILD, CURRENT_MERGED);
     });
 
     document.getElementById("filter-select").addEventListener("change", () => {
-        renderDashboard(guildName, merged);
+        renderDashboard(CURRENT_GUILD, CURRENT_MERGED);
     });
 
     document.getElementById("overview-search").addEventListener("input", () => {
-        renderDashboard(guildName, merged);
+        renderDashboard(CURRENT_GUILD, CURRENT_MERGED);
     });
 
     // Detailed breakdown section
-    resultsDiv.innerHTML += `
+    resultsDiv.insertAdjacentHTML("beforeend", `
         <h2>Detailed Breakdown</h2>
         <button id="toggle-all" class="global-collapse-btn">Collapse All</button>
-    `;
+    `);
 
     renderDetailedSections(guildName, merged);
 
@@ -324,8 +361,7 @@ function renderDashboard(guildName, merged) {
     });
 
     applyGlobalCollapseState();
-}   
-
+}
 
 
 // ------------------------------
