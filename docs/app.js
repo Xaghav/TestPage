@@ -292,38 +292,39 @@ function renderDashboard(guildName, merged) {
     document.getElementById("filter-select").value = prevFilter;
     document.getElementById("overview-search").value = prevSearch;
 
-    // Render the overview table
+    // Insert overview table
     const tableHTML = renderOverviewTable(guildName, merged);
     resultsDiv.innerHTML += tableHTML;
-    
+
     // Reattach listeners AFTER rendering
     document.getElementById("sort-select").addEventListener("change", () => {
         renderDashboard(guildName, merged);
     });
-    
+
     document.getElementById("filter-select").addEventListener("change", () => {
         renderDashboard(guildName, merged);
     });
-    
+
     document.getElementById("overview-search").addEventListener("input", () => {
         renderDashboard(guildName, merged);
     });
-    
+
     // Detailed breakdown section
     resultsDiv.innerHTML += `
         <h2>Detailed Breakdown</h2>
         <button id="toggle-all" class="global-collapse-btn">Collapse All</button>
     `;
-    
+
     renderDetailedSections(guildName, merged);
-    
+
     // Collapse all button
     document.getElementById("toggle-all").addEventListener("click", () => {
         allCollapsed = !allCollapsed;
         applyGlobalCollapseState();
     });
-    
+
     applyGlobalCollapseState();
+}   
 
 
 
