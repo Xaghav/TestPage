@@ -204,7 +204,7 @@ h1, h2, h3, h4, h5 {
    COLLAPSED CARD
 ------------------------------ */
 
-.collapsed-card .meta,
+/* .collapsed-card .meta, */
 .collapsed-card h5,
 .collapsed-card .leaderboard {
     display: none;
