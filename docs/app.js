@@ -309,6 +309,46 @@ function renderDashboard(guildName, merged) {
     const tableHTML = renderOverviewTable(guildName, merged);
     resultsDiv.insertAdjacentHTML("beforeend", tableHTML);
 
+    // ⭐ Add row → modal click listeners (NEW)
+    document.querySelectorAll(".overview-row").forEach(row => {
+        row.addEventListener("click", () => {
+            const obj = row.dataset.objective;
+            const skill = merged[obj];
+            const info = getRankInfo(skill);
+
+            const label = skill.type === "score" ? "Score" : "Time (ms)";
+            const yourValue = skill.type === "score" ? skill.yourScore : skill.yourBestTime;
+
+            const modalHTML = `
+                <h2>${obj}</h2>
+                <p><strong>Your ${label}:</strong> ${yourValue ?? "—"}</p>
+                <p><strong>Your Rank:</strong> ${info.rank}</p>
+                <p><strong>Needed:</strong> ${info.neededText}</p>
+
+                <div class="progress-wrapper">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:${info.progress}%;"></div>
+                    </div>
+                    <span class="progress-text">${Math.round(info.progress)}% progress</span>
+                </div>
+
+                <h3>Top 10</h3>
+                <table class="leaderboard">
+                    <tr><th>Rank</th><th>Clan</th><th>${label}</th></tr>
+                    ${skill.top10.map((c, i) => `
+                        <tr>
+                            <td>${i + 1}</td>
+                            <td>${c.clanName}</td>
+                            <td>${skill.type === "score" ? c.score : c.bestTime}</td>
+                        </tr>
+                    `).join("")}
+                </table>
+            `;
+
+            openModal(modalHTML);
+        });
+    });
+
     // Attach listeners
     document.getElementById("sort-select").addEventListener("change", () => {
         renderDashboard(CURRENT_GUILD, CURRENT_MERGED);
