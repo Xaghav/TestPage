@@ -1,38 +1,7 @@
-let CURRENT_GUILD = null;
-let CURRENT_MERGED = null;
 
 // ------------------------------
 // ENTRY: SEARCH GUILD
 // ------------------------------
-// async function searchGuild() {
-//     const guildName = document.getElementById('guild-input').value.trim();
-//     const cacheUrl = './data/summary.json';
-
-//     if (!guildName) return;
-
-//     try {
-//         const profileRaw = await fetchGuildProfile(guildName);
-//         const profileMap = normalizeProfile(profileRaw);
-
-//         let leaderboardRaw;
-//         try {
-//             const cacheResponse = await fetch(cacheUrl);
-//             if (!cacheResponse.ok) throw new Error("summary.json missing");
-//             const cachedData = await cacheResponse.json();
-//             leaderboardRaw = cachedData.weekly;
-//         } catch (err) {
-//             leaderboardRaw = await fetchTop10Live();
-//         }
-
-//         const leaderboardMap = normalizeLeaderboard(leaderboardRaw);
-//         const merged = mergeProfileAndLeaderboard(profileMap, leaderboardMap);
-
-//         renderDashboard(guildName, merged);
-
-//     } catch (err) {
-//         document.getElementById('results').innerHTML = `<p>Error: ${err.message}</p>`;
-//     }
-// }
 async function searchGuild() {
     const guildName = document.getElementById('guild-input').value.trim();
     const cacheUrl = './data/summary.json';
@@ -55,10 +24,6 @@ async function searchGuild() {
 
         const leaderboardMap = normalizeLeaderboard(leaderboardRaw);
         const merged = mergeProfileAndLeaderboard(profileMap, leaderboardMap);
-
-        // ⭐ Store global state
-        CURRENT_GUILD = guildName;
-        CURRENT_MERGED = merged;
 
         renderDashboard(guildName, merged);
 
@@ -289,18 +254,21 @@ function updateGlobalButtonState() {
 }
 
 // ------------------------------
-// RENDER DASHBOARD
+// RENDER DASHBOARD 
 // ------------------------------
 function renderDashboard(guildName, merged) {
-    // Remember previous UI state
+    const resultsDiv = document.getElementById('results');
+
+    // Save previous UI state
     const prevSort = document.getElementById("sort-select")?.value || "objective";
     const prevFilter = document.getElementById("filter-select")?.value || "all";
     const prevSearch = document.getElementById("overview-search")?.value || "";
 
-    const resultsDiv = document.getElementById('results');
+    // Clear container safely
+    resultsDiv.innerHTML = "";
 
     // Render controls
-    resultsDiv.innerHTML = `
+    resultsDiv.insertAdjacentHTML("afterbegin", `
         <h2>${guildName} — Skill Overview</h2>
 
         <div class="controls">
@@ -322,9 +290,9 @@ function renderDashboard(guildName, merged) {
 
             <input id="overview-search" type="text" placeholder="Search skills...">
         </div>
-    `;
+    `);
 
-    // Restore previous values BEFORE attaching listeners
+    // Restore previous values
     document.getElementById("sort-select").value = prevSort;
     document.getElementById("filter-select").value = prevFilter;
     document.getElementById("overview-search").value = prevSearch;
@@ -333,12 +301,11 @@ function renderDashboard(guildName, merged) {
     const tableHTML = renderOverviewTable(guildName, merged);
     resultsDiv.insertAdjacentHTML("beforeend", tableHTML);
 
-    // Reattach listeners AFTER rendering
+    // Attach listeners
     document.getElementById("sort-select").addEventListener("change", () => {
         console.log("%cSHOT FIRED", "color: red; font-size: 20px; font-weight: bold;");
         renderDashboard(CURRENT_GUILD, CURRENT_MERGED);
     });
-
 
     document.getElementById("filter-select").addEventListener("change", () => {
         renderDashboard(CURRENT_GUILD, CURRENT_MERGED);
@@ -348,7 +315,7 @@ function renderDashboard(guildName, merged) {
         renderDashboard(CURRENT_GUILD, CURRENT_MERGED);
     });
 
-    // Detailed breakdown section
+    // Detailed breakdown
     resultsDiv.insertAdjacentHTML("beforeend", `
         <h2>Detailed Breakdown</h2>
         <button id="toggle-all" class="global-collapse-btn">Collapse All</button>
@@ -426,6 +393,7 @@ function renderDetailedSections(guildName, merged) {
     const scoreSkills = Object.entries(merged).filter(([_, s]) => s.type === "score");
     const speedSkills = Object.entries(merged).filter(([_, s]) => s.type === "speed");
 
+    // SCORE SECTION
     resultsDiv.insertAdjacentHTML("beforeend", `
         <h3 class="section-title score-title">Score-based</h3>
         <div class="cards-grid score-grid"></div>
@@ -434,26 +402,32 @@ function renderDetailedSections(guildName, merged) {
     const scoreGrid = resultsDiv.querySelector('.score-grid');
 
     scoreSkills.forEach(([objective, skill]) => {
-        scoreGrid.innerHTML += renderSkillCard(guildName, objective, skill);
+        scoreGrid.insertAdjacentHTML("beforeend", renderSkillCard(guildName, objective, skill));
     });
 
-    resultsDiv.innerHTML += `<h3 class="section-title speed-title">Speed-based</h3><div class="cards-grid speed-grid"></div>`;
+    // SPEED SECTION
+    resultsDiv.insertAdjacentHTML("beforeend", `
+        <h3 class="section-title speed-title">Speed-based</h3>
+        <div class="cards-grid speed-grid"></div>
+    `);
+
     const speedGrid = resultsDiv.querySelector('.speed-grid');
 
     speedSkills.forEach(([objective, skill]) => {
-        speedGrid.innerHTML += renderSkillCard(guildName, objective, skill);
+        speedGrid.insertAdjacentHTML("beforeend", renderSkillCard(guildName, objective, skill));
     });
 
+    // Collapse buttons
     document.querySelectorAll(".skill-card .collapse-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             const card = btn.closest(".skill-card");
             const collapsed = card.classList.toggle("collapsed-card");
             btn.textContent = collapsed ? "Expand" : "Collapse";
-
             updateGlobalButtonState();
         });
     });
 }
+
 
 // ------------------------------
 // SKILL CARD RENDER
