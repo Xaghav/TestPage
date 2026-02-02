@@ -23,7 +23,7 @@ async function searchGuild() {
         }
 
         // 3. Display results
-        displayGuildInfo(profile, weeklyData);
+        displayGuildInfo(guildName, profile, weeklyData);
 
     } catch (err) {
         console.error("Search failed:", err);
@@ -56,11 +56,10 @@ async function fetchTop10Fallback() {
     };
 }
 
-function displayGuildInfo(profile, weeklyData) {
+function displayGuildInfo(guildName, profile, weeklyData) {
     const resultsDiv = document.getElementById('results');
-    const guildName = profile.clanName;
 
-    resultsDiv.innerHTML = `<h3>${guildName} Stats</h3>`;
+    resultsDiv.innerHTML = `<h3>${profile} Stats</h3>`;
 
     Object.keys(weeklyData).forEach(eventName => {
         const top10 = weeklyData[eventName];
