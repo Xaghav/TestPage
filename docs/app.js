@@ -5,25 +5,55 @@ async function searchGuild() {
     const cacheUrl = './data/summary.json';
 
     try {
-        // 1. Fetch live clan profile from IdleClans API
-        const profileResponse = await fetch(`https://query.idleclans.com/api/Clan/logs/clan/${guildName}`);
-        
-        if (!profileResponse.ok) {
-            throw new Error("Clan not found or API error");
+        // 1. Fetch guild profile
+        const profile = await fetchGuildProfile(guildName);
+
+        // 2. Try loading weekly rankings from local file
+        let weeklyData;
+        try {
+            const cacheResponse = await fetch(cacheUrl);
+            if (!cacheResponse.ok) throw new Error("summary.json missing");
+            const cachedData = await cacheResponse.json();
+            weeklyData = cachedData.weekly;
+        } catch (err) {
+            console.warn("summary.json missing — fetching live top 10 instead");
+
+            // Fallback: fetch top 10 for Default/Woodcutting
+            weeklyData = await fetchTop10Fallback();
         }
 
-        const profile = await profileResponse.json();
-
-        // 2. Fetch cached weekly rankings
-        const cacheResponse = await fetch(cacheUrl);
-        const cachedData = await cacheResponse.json();
-
-        displayGuildInfo(profile, cachedData.weekly);
+        // 3. Display results
+        displayGuildInfo(profile, weeklyData);
 
     } catch (err) {
         console.error("Search failed:", err);
         document.getElementById('results').innerHTML = `<p>Error: ${err.message}</p>`;
     }
+}
+
+async function fetchGuildProfile(guildName) {
+    const apiUrl = `https://query.idleclans.com/api/Clan/logs/clan/${guildName}`;
+    // const proxied = `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`;
+
+    const res = await fetch(apiUrl);
+    if (!res.ok) throw new Error("Guild not found");
+
+    return await res.json();
+}
+
+async function fetchTop10Fallback() {
+    const url = "https://query.idleclans.com/api/ClanCup/leaderboard/Default/Woodcutting";
+    // const proxied = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Failed to fetch fallback leaderboard");
+
+    const data = await res.json();
+
+    // Convert API format → your expected format
+    return {
+        "Woodcutting": data // array of top 10 clans
+    };
 }
 
 function displayGuildInfo(profile, weeklyData) {
