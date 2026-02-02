@@ -42,7 +42,7 @@ async function fetchGuildProfile(guildName) {
 }
 
 async function fetchTop10Fallback() {
-    const url = "https://query.idleclans.com/api/ClanCup/leaderboard/Default/Woodcutting";
+    const apiUrl = "https://query.idleclans.com/api/ClanCup/leaderboard/Default/Woodcutting";
     // const proxied = `https://thingproxy.freeboard.io/fetch/${apiUrl}`;
 
     const res = await fetch(apiUrl);
