@@ -48,7 +48,7 @@ async function fetchTop10Live() {
     const res = await fetch(apiUrl);
     if (!res.ok) throw new Error("Failed to fetch leaderboard");
     const json = await res.json();
-    return json.data; // { topScoreClans, topTimeClans }
+    return json; // { topScoreClans, topTimeClans }
 }
 
 // ---------------- NORMALIZERS ----------------
