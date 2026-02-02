@@ -165,10 +165,11 @@ function sortSkills(skills, merged, sortBy) {
             case "rank":
                 return (a.yourRank ?? 9999) - (b.yourRank ?? 9999);
 
-            case "score":
+            case "score": {
                 const aVal = a.type === "score" ? a.yourScore ?? 0 : -(a.yourBestTime ?? 9999999);
                 const bVal = b.type === "score" ? b.yourScore ?? 0 : -(b.yourBestTime ?? 9999999);
                 return bVal - aVal;
+            }
 
             case "progress":
                 return getRankInfo(b).progress - getRankInfo(a).progress;
@@ -180,7 +181,7 @@ function sortSkills(skills, merged, sortBy) {
 }
 
 function filterSkills(skills, merged, filterBy) {
-    return skills.filter(([name, skill]) => {
+    return skills.filter(([_, skill]) => {
         if (filterBy === "top10") return skill.yourRank && skill.yourRank <= 10;
         if (filterBy === "score") return skill.type === "score";
         if (filterBy === "speed") return skill.type === "speed";
@@ -421,7 +422,7 @@ function renderDetailedSections(guildName, merged) {
         speedGrid.innerHTML += renderSkillCard(guildName, objective, skill);
     });
 
-    // Per-card collapse/expand
+    // Per-card collapse/expand (minimal text link)
     document.querySelectorAll(".skill-card .collapse-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             const card = btn.closest(".skill-card");
@@ -456,3 +457,20 @@ function renderSkillCard(guildName, objective, skill) {
                 <div class="progress-bar">
                     <div class="progress-fill" style="width:${info.progress}%;"></div>
                 </div>
+                <span class="progress-text">${Math.round(info.progress)}% progress</span>
+            </div>
+
+            <h5>Top 10</h5>
+            <table class="leaderboard">
+                <tr><th>Rank</th><th>Clan</th><th>${label}</th></tr>
+                ${skill.top10.map((c, i) => `
+                    <tr class="${c.clanName === guildName ? 'your-guild' : ''}">
+                        <td>${i + 1}</td>
+                        <td>${c.clanName}</td>
+                        <td>${skill.type === "score" ? c.score : c.bestTime}</td>
+                    </tr>
+                `).join("")}
+            </table>
+        </div>
+    `;
+}
