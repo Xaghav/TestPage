@@ -1,39 +1,48 @@
 // docs/app.js
 
 async function searchGuild() {
-    const guildName = document.getElementById('guild-input').value;
+    const guildName = document.getElementById('guild-input').value.trim();
     const cacheUrl = './data/summary.json';
-    
+
     try {
-        // 1. Fetch live profile from API (or cached if preferred)
-        const profileResponse = await fetch(`https://query.idleclans.com{guildName}`);
+        // 1. Fetch live clan profile from IdleClans API
+        const profileResponse = await fetch(`https://query.idleclans.com/api/Clan/logs/clan/${guildName}`);
+        
+        if (!profileResponse.ok) {
+            throw new Error("Clan not found or API error");
+        }
+
         const profile = await profileResponse.json();
 
-        // 2. Fetch cached weekly rankings for "Distance to Top 3"
+        // 2. Fetch cached weekly rankings
         const cacheResponse = await fetch(cacheUrl);
         const cachedData = await cacheResponse.json();
-        
+
         displayGuildInfo(profile, cachedData.weekly);
+
     } catch (err) {
         console.error("Search failed:", err);
+        document.getElementById('results').innerHTML = `<p>Error: ${err.message}</p>`;
     }
 }
 
 function displayGuildInfo(profile, weeklyData) {
     const resultsDiv = document.getElementById('results');
-    resultsDiv.innerHTML = `<h3>${profile.name} Stats</h3>`;
+    const guildName = profile.clanName;
 
-    // Calculate Distance from Top 3 for each event
-    // weeklyData structure: { eventName: [ {clanName, score}, ... ] }
+    resultsDiv.innerHTML = `<h3>${guildName} Stats</h3>`;
+
     Object.keys(weeklyData).forEach(eventName => {
         const top10 = weeklyData[eventName];
-        const guildInEvent = top10.find(c => c.clanName === profile.name);
-        const thirdPlace = top10[2]; // Index 2 is 3rd place
+        const guildInEvent = top10.find(c => c.clanName === guildName);
+        const thirdPlace = top10[2];
 
         let statusText = "Not in Top 10";
+
         if (guildInEvent) {
             const rank = top10.indexOf(guildInEvent) + 1;
             statusText = `Rank: ${rank}`;
+
             if (rank > 3) {
                 const diff = thirdPlace.score - guildInEvent.score;
                 statusText += ` (${diff} behind 3rd place)`;
