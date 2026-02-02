@@ -147,11 +147,11 @@ h1, h2, h3, h4, h5 {
 
 /* Optional: tint entire row based on status */
 .status-row-top {
-    background: rgba(34, 197, 94, 0.12) !important;
+    background: rgba(34, 197, 94, 0.12) /*!important */;
 }
 
 .status-row-below {
-    background: rgba(239, 68, 68, 0.12) !important;
+    background: rgba(239, 68, 68, 0.12) /*!important */;
 }
 
 
