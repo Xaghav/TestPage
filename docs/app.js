@@ -4,35 +4,7 @@ let CURRENT_MERGED = null;
 // ------------------------------
 // ENTRY: SEARCH GUILD
 // ------------------------------
-// async function searchGuild() {
-//     const guildName = document.getElementById('guild-input').value.trim();
-//     const cacheUrl = './data/summary.json';
 
-//     if (!guildName) return;
-
-//     try {
-//         const profileRaw = await fetchGuildProfile(guildName);
-//         const profileMap = normalizeProfile(profileRaw);
-
-//         let leaderboardRaw;
-//         try {
-//             const cacheResponse = await fetch(cacheUrl);
-//             if (!cacheResponse.ok) throw new Error("summary.json missing");
-//             const cachedData = await cacheResponse.json();
-//             leaderboardRaw = cachedData.weekly;
-//         } catch (err) {
-//             leaderboardRaw = await fetchTop10Live();
-//         }
-
-//         const leaderboardMap = normalizeLeaderboard(leaderboardRaw);
-//         const merged = mergeProfileAndLeaderboard(profileMap, leaderboardMap);
-
-//         renderDashboard(guildName, merged);
-
-//     } catch (err) {
-//         document.getElementById('results').innerHTML = `<p>Error: ${err.message}</p>`;
-//     }
-// }
 async function searchGuild() {
     const guildName = document.getElementById('guild-input').value.trim();
     const cacheUrl = './data/summary.json';
@@ -339,7 +311,6 @@ function renderDashboard(guildName, merged) {
 
     // Attach listeners
     document.getElementById("sort-select").addEventListener("change", () => {
-        console.log("%cSHOT FIRED", "color: red; font-size: 20px; font-weight: bold;");
         renderDashboard(CURRENT_GUILD, CURRENT_MERGED);
     });
 
