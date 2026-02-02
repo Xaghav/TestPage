@@ -1,4 +1,4 @@
-// public/app.js
+// docs/app.js
 
 async function searchGuild() {
     const guildName = document.getElementById('guild-input').value;
