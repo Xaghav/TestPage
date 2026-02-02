@@ -255,11 +255,14 @@ function updateGlobalButtonState() {
 // RENDER DASHBOARD
 // ------------------------------
 function renderDashboard(guildName, merged) {
+    // Remember previous UI state
     const prevSort = document.getElementById("sort-select")?.value || "objective";
     const prevFilter = document.getElementById("filter-select")?.value || "all";
     const prevSearch = document.getElementById("overview-search")?.value || "";
 
     const resultsDiv = document.getElementById('results');
+
+    // Render controls
     resultsDiv.innerHTML = `
         <h2>${guildName} — Skill Overview</h2>
 
@@ -284,12 +287,28 @@ function renderDashboard(guildName, merged) {
         </div>
     `;
 
+    // Restore previous values BEFORE attaching listeners
     document.getElementById("sort-select").value = prevSort;
     document.getElementById("filter-select").value = prevFilter;
     document.getElementById("overview-search").value = prevSearch;
 
+    // Render the overview table
     renderOverviewTable(guildName, merged);
 
+    // ⭐ Reattach listeners AFTER rendering
+    document.getElementById("sort-select").addEventListener("change", () => {
+        renderDashboard(guildName, merged);
+    });
+
+    document.getElementById("filter-select").addEventListener("change", () => {
+        renderDashboard(guildName, merged);
+    });
+
+    document.getElementById("overview-search").addEventListener("input", () => {
+        renderDashboard(guildName, merged);
+    });
+
+    // Detailed breakdown section
     resultsDiv.innerHTML += `
         <h2>Detailed Breakdown</h2>
         <button id="toggle-all" class="global-collapse-btn">Collapse All</button>
@@ -297,6 +316,7 @@ function renderDashboard(guildName, merged) {
 
     renderDetailedSections(guildName, merged);
 
+    // Collapse all button
     document.getElementById("toggle-all").addEventListener("click", () => {
         allCollapsed = !allCollapsed;
         applyGlobalCollapseState();
@@ -304,6 +324,7 @@ function renderDashboard(guildName, merged) {
 
     applyGlobalCollapseState();
 }
+
 
 // ------------------------------
 // OVERVIEW TABLE
