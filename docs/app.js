@@ -58,8 +58,8 @@ async function fetchTop10Fallback() {
 
 function displayGuildInfo(guildName, profile, weeklyData) {
     const resultsDiv = document.getElementById('results');
-
-    resultsDiv.innerHTML = `<h3>${profile} Stats</h3>`;
+    const profileString = JSON.stringify(profile, null, 2);
+    resultsDiv.innerHTML = `<h3>${profileString} Stats</h3>`;
 
     Object.keys(weeklyData).forEach(eventName => {
         const top10 = weeklyData[eventName];
