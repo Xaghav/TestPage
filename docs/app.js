@@ -1,7 +1,38 @@
+let CURRENT_GUILD = null;
+let CURRENT_MERGED = null;
 
 // ------------------------------
 // ENTRY: SEARCH GUILD
 // ------------------------------
+// async function searchGuild() {
+//     const guildName = document.getElementById('guild-input').value.trim();
+//     const cacheUrl = './data/summary.json';
+
+//     if (!guildName) return;
+
+//     try {
+//         const profileRaw = await fetchGuildProfile(guildName);
+//         const profileMap = normalizeProfile(profileRaw);
+
+//         let leaderboardRaw;
+//         try {
+//             const cacheResponse = await fetch(cacheUrl);
+//             if (!cacheResponse.ok) throw new Error("summary.json missing");
+//             const cachedData = await cacheResponse.json();
+//             leaderboardRaw = cachedData.weekly;
+//         } catch (err) {
+//             leaderboardRaw = await fetchTop10Live();
+//         }
+
+//         const leaderboardMap = normalizeLeaderboard(leaderboardRaw);
+//         const merged = mergeProfileAndLeaderboard(profileMap, leaderboardMap);
+
+//         renderDashboard(guildName, merged);
+
+//     } catch (err) {
+//         document.getElementById('results').innerHTML = `<p>Error: ${err.message}</p>`;
+//     }
+// }
 async function searchGuild() {
     const guildName = document.getElementById('guild-input').value.trim();
     const cacheUrl = './data/summary.json';
@@ -25,12 +56,17 @@ async function searchGuild() {
         const leaderboardMap = normalizeLeaderboard(leaderboardRaw);
         const merged = mergeProfileAndLeaderboard(profileMap, leaderboardMap);
 
+        // ⭐ Store global state
+        CURRENT_GUILD = guildName;
+        CURRENT_MERGED = merged;
+
         renderDashboard(guildName, merged);
 
     } catch (err) {
         document.getElementById('results').innerHTML = `<p>Error: ${err.message}</p>`;
     }
 }
+
 
 
 // ------------------------------
