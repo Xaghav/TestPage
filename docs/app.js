@@ -235,7 +235,7 @@ function renderDashboard(guildName, merged) {
     // ⭐ Attach listeners
     document.getElementById("sort-select").addEventListener("change", () => renderDashboard(guildName, merged));
     document.getElementById("filter-select").addEventListener("change", () => renderDashboard(guildName, merged));
-    document.getElementById("overview-search").addEventListener("input", () => renderDashboard(guildName, merged));
+    document.getElementById("overview-search").addEventListener("keydown", (e) => { if (e.key === "Enter") { renderDashboard(guildName, merged); } });
 
     document.getElementById("toggle-details").addEventListener("click", () => {
         const cards = document.querySelectorAll(".skill-card");
