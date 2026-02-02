@@ -33,7 +33,7 @@ async function searchGuild() {
 
 async function fetchGuildProfile(guildName) {
     const apiUrl = `https://query.idleclans.com/api/Clan/logs/clan/${guildName}`;
-    const proxied = `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`;
+    const proxied = `https://thingproxy.freeboard.io/fetch/${apiUrl}`;
 
     const res = await fetch(proxied);
     if (!res.ok) throw new Error("Guild not found");
@@ -43,7 +43,7 @@ async function fetchGuildProfile(guildName) {
 
 async function fetchTop10Fallback() {
     const url = "https://query.idleclans.com/api/ClanCup/leaderboard/Default/Woodcutting";
-    const proxied = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+    const proxied = `https://thingproxy.freeboard.io/fetch/${apiUrl}`;
 
     const res = await fetch(proxied);
     if (!res.ok) throw new Error("Failed to fetch fallback leaderboard");
