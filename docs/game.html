@@ -1278,10 +1278,26 @@ save hughscore, enemy fight and health bar
             }
             
             if (player.hp <= 0) {
-                if (score > highScore) localStorage.setItem("boxHighScore", score);
-                localStorage.removeItem("boxCombatWorldSave");
-                location.reload(); 
+            // 1. Update High Score (so they don't lose their best record)
+            highScore = Math.max(score, highScore);
+            localStorage.setItem("boxHighScore", highScore);
+
+            // 2. Prepare the Reset Data
+            const resetData = {
+                score: 0,
+                highScore: highScore,
+                worldX: 0,   // Back to start
+                worldY: 0,   // Back to start
+                playerHp: 100 // Full health
+            };
+
+             // 3. Overwrite the save with the "Fresh Start" data
+            localStorage.setItem("boxCombatWorldSave", JSON.stringify(resetData));
+
+             // 4. Reload to apply changes
+            location.reload(); 
             }
+
         }
 
         function draw() {
