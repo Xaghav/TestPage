@@ -1,4 +1,4 @@
-<!--
+<!-- using arrow to move box
 <!DOCTYPE html>
 <html>
 <head>
@@ -43,7 +43,11 @@
 </body>
 </html>
 -->
-<!--
+
+
+
+
+<!-- joystick to move
 <!DOCTYPE html>
 <html>
 <head>
@@ -207,6 +211,8 @@
 </body>
 </html>
 
+
+adding enemy and Collison and score count on Collison 
 
 <!DOCTYPE html>
 <html>
@@ -400,6 +406,9 @@
     </script>
 </body>
 </html>
+
+save hughscore, enemy fight and health bar
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -680,7 +689,7 @@
 </html>
 -->
 
-
+<!--save healh,  score, hughscore, 
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -861,6 +870,220 @@
 </html>
 
 
+-->
 
 
+
+
+<!-- different zone, shop, enemy in zone, moving through zone-->
                         
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Box World: 1000 Zones</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
+        canvas { display: block; touch-action: none; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; padding: 15px; display: flex; justify-content: space-between; box-sizing: border-box; pointer-events: none; z-index: 10; }
+        .stat-box { color: white; font-weight: bold; text-shadow: 2px 2px 4px black; font-size: 14px; }
+        #zone-display { position: absolute; bottom: 20px; right: 20px; color: rgba(255,255,255,0.5); font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div id="ui-layer">
+        <div class="stat-box">HP: <span id="hp">100</span> | Score: <span id="score">0</span></div>
+        <div class="stat-box">Zone: <span id="zone-id">0,0</span></div>
+    </div>
+    <div id="zone-display">Exploring the Box-Verse</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreEl = document.getElementById("score");
+        const hpEl = document.getElementById("hp");
+        const zoneEl = document.getElementById("zone-id");
+
+        // --- 1. ZONE DEFINITIONS ---
+        const ZONES_DATA = {
+            "0,0": { type: "combat", color: "#1a1a1a", name: "Starting Fields" },
+            "1,0": { type: "shop", color: "#2c3e50", name: "The Box Merchant" },
+            "0,1": { type: "combat", color: "#27ae60", name: "Green Forest" },
+            "1,1": { type: "boss", color: "#c0392b", name: "Boss Chamber" }
+        };
+
+        let worldX = 0;
+        let worldY = 0;
+        let score = 0;
+        let enemies = [];
+
+        let player = {
+            x: 100, y: 100, size: 25, // Reduced Size
+            vx: 0, vy: 0, speed: 5,
+            hp: 100, maxHp: 100
+        };
+
+        let stick = { baseX: 100, baseY: 0, baseRad: 50, headX: 100, headY: 0, active: false };
+
+        // --- 2. TRANSITION & SHOP LOGIC ---
+        function checkZoneChange() {
+            let changed = false;
+            // Left/Right
+            if (player.x < 0) { worldX--; player.x = canvas.width - player.size; changed = true; }
+            else if (player.x > canvas.width - player.size) { worldX++; player.x = 0; changed = true; }
+            // Up/Down
+            if (player.y < 0) { worldY++; player.y = canvas.height - player.size; changed = true; }
+            else if (player.y > canvas.height - player.size) { worldY--; player.y = 0; changed = true; }
+
+            if (changed) {
+                saveGame();
+                enterZone();
+            }
+        }
+
+        function enterZone() {
+            const id = `${worldX},${worldY}`;
+            const zone = ZONES_DATA[id] || { type: "combat", color: "#1a1a1a", name: "Wilderness" };
+            
+            zoneEl.innerText = id;
+            document.getElementById("zone-display").innerText = zone.name;
+            
+            // CLEAR ENEMIES: They do not persist when moving
+            enemies = []; 
+            
+            if (zone.type === "combat" || zone.type === "boss") {
+                const count = zone.type === "boss" ? 1 : 4;
+                for(let i=0; i<count; i++) enemies.push(spawnEnemy(zone.type === "boss"));
+            }
+        }
+
+        function spawnEnemy(isBoss = false) {
+            const size = isBoss ? 70 : 20; // Reduced Size
+            return {
+                x: Math.random() * (canvas.width - size),
+                y: Math.random() * (canvas.height - size),
+                size: size, hp: isBoss ? 200 : 30, maxHp: isBoss ? 200 : 30, 
+                color: isBoss ? "#9b59b6" : "#f1c40f"
+            };
+        }
+
+        function runShop() {
+            ctx.fillStyle = "white";
+            ctx.textAlign = "center";
+            ctx.font = "bold 16px sans-serif";
+            ctx.fillText("SHOP: Touch center block to buy HP (50 Score)", canvas.width/2, canvas.height/2 - 50);
+            
+            // Draw Merchant Block
+            ctx.fillStyle = "#f39c12";
+            ctx.fillRect(canvas.width/2 - 20, canvas.height/2 - 20, 40, 40);
+
+            // Buy Logic
+            let dist = Math.hypot(player.x - (canvas.width/2 - 20), player.y - (canvas.height/2 - 20));
+            if (dist < 40 && score >= 50 && player.hp < player.maxHp) {
+                score -= 50;
+                player.hp = Math.min(player.hp + 25, 100);
+                scoreEl.innerText = score;
+                saveGame();
+            }
+        }
+
+        // --- 3. CORE ENGINE ---
+        function saveGame() {
+            localStorage.setItem("boxSave", JSON.stringify({ score, worldX, worldY, hp: player.hp }));
+        }
+
+        function loadGame() {
+            const saved = JSON.parse(localStorage.getItem("boxSave"));
+            if (saved) {
+                score = saved.score || 0;
+                worldX = saved.worldX || 0;
+                worldY = saved.worldY || 0;
+                player.hp = saved.hp || 100;
+            }
+            scoreEl.innerText = score;
+            enterZone();
+        }
+
+        function update() {
+            player.x += player.vx;
+            player.y += player.vy;
+            checkZoneChange();
+
+            enemies.forEach((e, i) => {
+                if (player.x < e.x + e.size && player.x + player.size > e.x &&
+                    player.y < e.y + e.size && player.y + player.size > e.y) {
+                    e.hp -= 1; player.hp -= 0.5;
+                    if (e.hp <= 0) {
+                        enemies.splice(i, 1);
+                        score += 10;
+                        scoreEl.innerText = score;
+                        if (ZONES_DATA[`${worldX},${worldY}`]?.type !== "boss") enemies.push(spawnEnemy());
+                    }
+                }
+            });
+
+            if (player.hp <= 0) {
+                localStorage.removeItem("boxSave");
+                location.reload();
+            }
+            hpEl.innerText = Math.floor(player.hp);
+        }
+
+        function draw() {
+            const zone = ZONES_DATA[`${worldX},${worldY}`] || { color: "#1a1a1a" };
+            ctx.fillStyle = zone.color;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if (zone.type === "shop") runShop();
+
+            // Joystick Visual
+            ctx.beginPath(); ctx.arc(stick.baseX, stick.baseY, stick.baseRad, 0, Math.PI*2);
+            ctx.fillStyle = "rgba(255,255,255,0.05)"; ctx.fill();
+            ctx.beginPath(); ctx.arc(stick.headX, stick.headY, 20, 0, Math.PI*2);
+            ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.fill();
+
+            enemies.forEach(e => {
+                ctx.fillStyle = e.color; ctx.fillRect(e.x, e.y, e.size, e.size);
+            });
+
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.size, player.size);
+
+            update();
+            requestAnimationFrame(draw);
+        }
+
+        // Input Handlers
+        function handleInput(tx, ty, isDown) {
+            if (!isDown) { stick.active = false; stick.headX = stick.baseX; stick.headY = stick.baseY; player.vx = 0; player.vy = 0; return; }
+            let dx = tx - stick.baseX; let dy = ty - stick.baseY;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 100 || stick.active) {
+                stick.active = true;
+                let angle = Math.atan2(dy, dx);
+                let clampedDist = Math.min(dist, stick.baseRad);
+                stick.headX = stick.baseX + Math.cos(angle) * clampedDist;
+                stick.headY = stick.baseY + Math.sin(angle) * clampedDist;
+                player.vx = Math.cos(angle) * (clampedDist / stick.baseRad) * player.speed;
+                player.vy = Math.sin(angle) * (clampedDist / stick.baseRad) * player.speed;
+            }
+        }
+
+        canvas.addEventListener("touchstart", e => handleInput(e.touches[0].clientX, e.touches[0].clientY, true));
+        canvas.addEventListener("touchmove", e => handleInput(e.touches[0].clientX, e.touches[0].clientY, true));
+        canvas.addEventListener("touchend", () => handleInput(0,0,false));
+        
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            stick.baseY = canvas.height - 100;
+            stick.headX = stick.baseX; stick.headY = stick.baseY;
+        });
+
+        window.dispatchEvent(new Event('resize'));
+        loadGame();
+        draw();
+    </script>
+</body>
+</html>
