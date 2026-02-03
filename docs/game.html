@@ -1,3 +1,4 @@
+<!--
 <!DOCTYPE html>
 <html>
 <head>
@@ -41,4 +42,152 @@
     </script>
 </body>
 </html>
+-->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Analog Box Movement</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body { margin: 0; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
+        canvas { display: block; touch-action: none; }
+        #label { position: absolute; top: 10px; width: 100%; text-align: center; color: white; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="label">Analog Scratch Controller</div>
+    <canvas id="gameCanvas"></canvas>
 
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- Game Objects ---
+        let box = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height / 2 - 25,
+            size: 50,
+            color: "#e74c3c",
+            vx: 0,
+            vy: 0,
+            speed: 7 // Max pixels per frame
+        };
+
+        let stick = {
+            baseX: 120,
+            baseY: 0, // Set in resize/init
+            baseRad: 70,
+            headX: 120,
+            headY: 0,
+            headRad: 35,
+            active: false,
+            touchId: null
+        };
+        stick.baseY = canvas.height - 120;
+        stick.headY = stick.baseY;
+
+        // --- Input Handling ---
+        function handleInput(inputX, inputY, isDown, id = null) {
+            if (!isDown) {
+                stick.active = false;
+                stick.headX = stick.baseX;
+                stick.headY = stick.baseY;
+                box.vx = 0;
+                box.vy = 0;
+                return;
+            }
+
+            let dx = inputX - stick.baseX;
+            let dy = inputY - stick.baseY;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Start stick if clicking near the base or already active
+            if (dist < stick.baseRad * 1.5 || stick.active) {
+                stick.active = true;
+                
+                let angle = Math.atan2(dy, dx);
+                // Clamp the head inside the base radius
+                let clampedDist = Math.min(dist, stick.baseRad);
+                
+                stick.headX = stick.baseX + Math.cos(angle) * clampedDist;
+                stick.headY = stick.baseY + Math.sin(angle) * clampedDist;
+
+                // Calculate velocity percentage (0 to 1)
+                let power = clampedDist / stick.baseRad;
+                box.vx = Math.cos(angle) * power * box.speed;
+                box.vy = Math.sin(angle) * power * box.speed;
+            }
+        }
+
+        // --- Events ---
+        canvas.addEventListener("mousedown", e => handleInput(e.clientX, e.clientY, true));
+        window.addEventListener("mousemove", e => { if(stick.active) handleInput(e.clientX, e.clientY, true); });
+        window.addEventListener("mouseup", () => handleInput(0, 0, false));
+
+        canvas.addEventListener("touchstart", e => {
+            const t = e.changedTouches[0];
+            handleInput(t.clientX, t.clientY, true);
+        }, {passive: false});
+        
+        canvas.addEventListener("touchmove", e => {
+            e.preventDefault();
+            const t = e.changedTouches[0];
+            handleInput(t.clientX, t.clientY, true);
+        }, {passive: false});
+
+        canvas.addEventListener("touchend", () => handleInput(0, 0, false));
+
+        // --- Game Loop ---
+        function update() {
+            // Update box position
+            box.x += box.vx;
+            box.y += box.vy;
+
+            // Screen boundaries
+            if (box.x < 0) box.x = 0;
+            if (box.y < 0) box.y = 0;
+            if (box.x + box.size > canvas.width) box.x = canvas.width - box.size;
+            if (box.y + box.size > canvas.height) box.y = canvas.height - box.size;
+        }
+
+        function draw() {
+            // Clear Background
+            ctx.fillStyle = "#2c3e50";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Joystick Base
+            ctx.beginPath();
+            ctx.arc(stick.baseX, stick.baseY, stick.baseRad, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+            ctx.fill();
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+            ctx.stroke();
+
+            // Draw Joystick Head
+            ctx.beginPath();
+            ctx.arc(stick.headX, stick.headY, stick.headRad, 0, Math.PI * 2);
+            ctx.fillStyle = "#ecf0f1";
+            ctx.fill();
+
+            // Draw the Box
+            ctx.fillStyle = box.color;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = box.color;
+            ctx.fillRect(box.x, box.y, box.size, box.size);
+            ctx.shadowBlur = 0; // Reset shadow for other drawings
+
+            update();
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+    </script>
+</body>
+</html>
