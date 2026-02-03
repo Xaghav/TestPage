@@ -193,7 +193,7 @@ function getRankInfo(skill) {
     // ------------------------------
     // CASE 3 — No performance recorded
     // ------------------------------
-    return { rank: yourRank ?? "N/A", neededText: "No performance recorded", progress: 0 };
+    return { rank: yourRank ?? "Not in Top 10", neededText: "No performance recorded", progress: 0 };
 }
 
 
