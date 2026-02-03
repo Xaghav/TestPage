@@ -43,6 +43,7 @@
 </body>
 </html>
 -->
+<!--
 <!DOCTYPE html>
 <html>
 <head>
@@ -201,6 +202,199 @@
             requestAnimationFrame(draw);
         }
 
+        draw();
+    </script>
+</body>
+</html>
+-->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Box Collector</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
+        canvas { display: block; touch-action: none; }
+        
+        /* Navigation Overlay */
+        #nav-overlay { position: absolute; top: 15px; left: 15px; z-index: 10; }
+        #nav-overlay a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Score Display */
+        #score-container {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="nav-overlay"><a href="index.html">← Home</a></div>
+    <div id="score-container">Score: <span id="score">0</span></div>
+    
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreEl = document.getElementById("score");
+
+        let score = 0;
+        let targets = [];
+        const TARGET_COUNT = 5;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            stick.baseY = canvas.height - 100;
+            stick.headX = stick.baseX;
+            stick.headY = stick.baseY;
+        }
+        window.addEventListener('resize', resize);
+
+        // --- Game Objects ---
+        let stick = { baseX: 100, baseY: 0, baseRad: 60, headX: 100, headY: 0, headRad: 30, active: false };
+        
+        let player = {
+            x: 0, y: 0,
+            size: 50,
+            color: "#e74c3c",
+            vx: 0, vy: 0,
+            speed: 8
+        };
+
+        // Initialize Player position
+        player.x = window.innerWidth / 2 - 25;
+        player.y = window.innerHeight / 2 - 25;
+
+        // --- Target Management ---
+        function spawnTarget() {
+            const size = player.size / 3;
+            return {
+                x: Math.random() * (canvas.width - size),
+                y: Math.random() * (canvas.height - size),
+                size: size,
+                color: "#f1c40f"
+            };
+        }
+
+        function initTargets() {
+            for(let i = 0; i < TARGET_COUNT; i++) {
+                targets.push(spawnTarget());
+            }
+        }
+
+        // --- Input Handling ---
+        function handleInput(inputX, inputY, isDown) {
+            if (!isDown) {
+                stick.active = false;
+                stick.headX = stick.baseX; stick.headY = stick.baseY;
+                player.vx = 0; player.vy = 0;
+                return;
+            }
+
+            let dx = inputX - stick.baseX;
+            let dy = inputY - stick.baseY;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < stick.baseRad * 2 || stick.active) {
+                stick.active = true;
+                let angle = Math.atan2(dy, dx);
+                let clampedDist = Math.min(dist, stick.baseRad);
+                stick.headX = stick.baseX + Math.cos(angle) * clampedDist;
+                stick.headY = stick.baseY + Math.sin(angle) * clampedDist;
+
+                let power = clampedDist / stick.baseRad;
+                player.vx = Math.cos(angle) * power * player.speed;
+                player.vy = Math.sin(angle) * power * player.speed;
+            }
+        }
+
+        // Event Listeners
+        canvas.addEventListener("mousedown", e => handleInput(e.clientX, e.clientY, true));
+        window.addEventListener("mousemove", e => { if(stick.active) handleInput(e.clientX, e.clientY, true); });
+        window.addEventListener("mouseup", () => handleInput(0, 0, false));
+        canvas.addEventListener("touchstart", e => handleInput(e.touches[0].clientX, e.touches[0].clientY, true), {passive: false});
+        canvas.addEventListener("touchmove", e => { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY, true); }, {passive: false});
+        canvas.addEventListener("touchend", () => handleInput(0, 0, false));
+
+        // --- Collision Detection ---
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.size &&
+                   rect1.x + rect1.size > rect2.x &&
+                   rect1.y < rect2.y + rect2.size &&
+                   rect1.y + rect1.size > rect2.y;
+        }
+
+        function update() {
+            player.x += player.vx;
+            player.y += player.vy;
+
+            // Wall Collisions
+            if (player.x < 0) player.x = 0;
+            if (player.y < 0) player.y = 0;
+            if (player.x + player.size > canvas.width) player.x = canvas.width - player.size;
+            if (player.y + player.size > canvas.height) player.y = canvas.height - player.size;
+
+            // Target Collisions
+            for (let i = targets.length - 1; i >= 0; i--) {
+                if (checkCollision(player, targets[i])) {
+                    targets.splice(i, 1); // Remove target
+                    score++;
+                    scoreEl.innerText = score;
+                    targets.push(spawnTarget()); // Spawn replacement
+                }
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = "#2c3e50";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Targets (Small Boxes)
+            targets.forEach(t => {
+                ctx.fillStyle = t.color;
+                ctx.fillRect(t.x, t.y, t.size, t.size);
+            });
+
+            // Joystick Base
+            ctx.beginPath();
+            ctx.arc(stick.baseX, stick.baseY, stick.baseRad, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+            ctx.fill();
+
+            // Joystick Head
+            ctx.beginPath();
+            ctx.arc(stick.headX, stick.headY, stick.headRad, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(236, 240, 241, 0.8)";
+            ctx.fill();
+
+            // Player Box
+            ctx.fillStyle = player.color;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = player.color;
+            ctx.fillRect(player.x, player.y, player.size, player.size);
+            ctx.shadowBlur = 0;
+
+            update();
+            requestAnimationFrame(draw);
+        }
+
+        resize();
+        initTargets();
         draw();
     </script>
 </body>
