@@ -1439,15 +1439,21 @@ save hughscore, enemy fight and health bar
         canvas.addEventListener("touchmove", e => { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY, true); }, {passive:false});
         canvas.addEventListener("touchend", () => handleInput(0,0,false));
 
+        let mouseDown = false;
+
         canvas.addEventListener("mousedown", e => {
+            mouseDown = true;
             handleInput(e.clientX, e.clientY, true);
         });
         
         canvas.addEventListener("mousemove", e => {
-            handleInput(e.clientX, e.clientY, true);
+            if (mouseDown) {
+                handleInput(e.clientX, e.clientY, true);
+            }
         });
         
         canvas.addEventListener("mouseup", () => {
+            mouseDown = false;
             handleInput(0, 0, false);
         });
 
