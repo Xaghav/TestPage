@@ -1151,6 +1151,7 @@ save hughscore, enemy fight and health bar
         const bestEl = document.getElementById("best");
         const zoneIdEl = document.getElementById("zone-id");
         const zoneNameEl = document.getElementById("zone-display");
+        const saveInd = document.getElementById("save-indicator");
 
         const STATES = { PLAYING: 0, GAMEOVER: 1 };
         let currentState = STATES.PLAYING;
@@ -1188,7 +1189,7 @@ save hughscore, enemy fight and health bar
             localStorage.setItem("boxCombatWorldSave", JSON.stringify(data));
             // Show "Saving" indicator visually
             saveInd.style.opacity = 1;
-            setTimeout(() => saveInd.style.opacity = 0, 1000);
+            setTimeout(() => saveInd.style.opacity = 0, 800); 
         }
 
         function loadGame() {
@@ -1208,11 +1209,21 @@ save hughscore, enemy fight and health bar
         setInterval(saveGame, 2000);
 
         // --- 4. CORE ENGINES ---
+       // function getZone(x, y) {
+            //let matches = REGIONS.filter(r => x >= r.xMin && x <= r.xMax && y >= r.yMin && y <= r.yMax);
+            //return matches[matches.length - 1]; // Return top-most region
+       // } 
         function getZone(x, y) {
+            // Filter regions, but provide a 'Default' fallback to prevent crashes
             let matches = REGIONS.filter(r => x >= r.xMin && x <= r.xMax && y >= r.yMin && y <= r.yMax);
-            return matches[matches.length - 1]; // Return top-most region
+            if (matches.length > 0) {
+                return matches[matches.length - 1];
+            }
+            // Fallback object so .color and .name never fail
+            return { type: "combat", color: "#111", name: "The Outer Wilds" };
         }
 
+        /*
         function enterZone() {
             const zone = getZone(worldX, worldY);
             zoneIdEl.innerText = `${worldX},${worldY}`;
@@ -1225,6 +1236,21 @@ save hughscore, enemy fight and health bar
                 spawnEnemy(85, 500, "#9b59b6");
             }
         }
+        */
+        function enterZone() {
+            const zone = getZone(worldX, worldY);
+            // Safety: only update if zone exists (which the fallback above ensures)
+            zoneIdEl.innerText = `${worldX},${worldY}`;
+            zoneNameEl.innerText = zone.name;
+    
+            enemies = [];
+            if (zone.type === "combat") {
+                for(let i=0; i<4; i++) spawnEnemy(25, 40, "#f1c40f");
+            } else if (zone.type === "boss") {
+                spawnEnemy(85, 500, "#9b59b6");
+            }
+        }
+
 
         function spawnEnemy(size, hp, color) {
             enemies.push({
@@ -1324,9 +1350,12 @@ save hughscore, enemy fight and health bar
             }
 
         function draw() {
-            const zone = getZone(worldX, worldY);
-            ctx.fillStyle = zone.color; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
+            //const zone = getZone(worldX, worldY);
+            //ctx.fillStyle = zone.color; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const zone = getZone(worldX, worldY); // Use the new getZone with fallback
+            ctx.fillStyle = zone.color; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
             if (zone.type === "shop") {
                 ctx.fillStyle = "white"; ctx.textAlign = "center"; 
                 ctx.fillText("SHOP: Touch Orange Block to Heal (Cost 50)", canvas.width/2, canvas.height/2 - 50);
