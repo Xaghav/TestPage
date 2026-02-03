@@ -122,44 +122,80 @@ function getRankInfo(skill) {
         return { rank: yourRank ?? "N/A", neededText: "Not enough data", progress: 0 };
     }
 
+    // Common references
+    const topOne = type === "speed" ? top10[0].bestTime : top10[0].score;
+    const topTen = type === "speed" ? top10[9].bestTime : top10[9].score;
+
+    // ------------------------------
+    // CASE 1 — You are in the Top 10
+    // ------------------------------
     if (yourRank && yourRank <= 10) {
         const index = yourRank - 1;
-        if (index === 0) return { rank: yourRank, neededText: "You are Rank #1", progress: 100 };
+
+        // Rank 1 → perfect
+        if (index === 0) {
+            return { rank: yourRank, neededText: "You are Rank #1", progress: 100 };
+        }
 
         const above = top10[index - 1];
 
+        // SCORE LOGIC
         if (type === "score") {
             const diff = above.score - yourScore;
-            const progress = Math.min(100, (yourScore / above.score) * 100);
+            const progress = Math.min(100, (yourScore / topOne) * 100);
             return { rank: yourRank, neededText: `${diff} more points`, progress };
         }
 
+        // SPEED LOGIC
         if (type === "speed") {
             const diff = yourBestTime - above.bestTime;
-            const worst = top10[9].bestTime;
-            const progress = Math.min(100, ((worst - yourBestTime) / (worst - above.bestTime)) * 100);
-            return { rank: yourRank, neededText: `${diff} ms faster`, progress };
+
+            // Clamp your time between topOne and topTen
+            const clamped = Math.min(Math.max(yourBestTime, topOne), topTen);
+
+            const progress = ((topTen - clamped) / (topTen - topOne)) * 100;
+
+            return {
+                rank: yourRank,
+                neededText: `${diff} ms slower`,
+                progress: Math.round(progress)
+            };
         }
     }
 
-    const tenth = top10[9];
+    // ------------------------------
+    // CASE 2 — You are NOT in the Top 10
+    // ------------------------------
 
+    // SCORE LOGIC
     if (type === "score") {
-        const diff = tenth.score - (yourScore ?? 0);
-        const progress = Math.min(100, (yourScore / tenth.score) * 100);
+        const diff = topTen - (yourScore ?? 0);
+        const progress = Math.min(100, ((yourScore ?? 0) / topTen) * 100);
         return { rank: "Not in Top 10", neededText: `${diff} more points`, progress };
     }
 
+    // SPEED LOGIC
     if (type === "speed" && yourBestTime != null) {
-        const diff = yourBestTime - tenth.bestTime;
-        const worst = tenth.bestTime;
-        const best = top10[0].bestTime;
-        const progress = Math.min(100, ((worst - yourBestTime) / (worst - best)) * 100);
-        return { rank: "Not in Top 10", neededText: `${diff} ms faster`, progress };
+        const diff = yourBestTime - topTen;
+
+        // Clamp your time between topOne and topTen
+        const clamped = Math.min(Math.max(yourBestTime, topOne), topTen);
+
+        const progress = ((topTen - clamped) / (topTen - topOne)) * 100;
+
+        return {
+            rank: "Not in Top 10",
+            neededText: `${diff} ms slower`,
+            progress: Math.round(progress)
+        };
     }
 
-    return { rank: yourRank ?? "N/A", neededText: "No performance recorded", progress: 0 };
+    // ------------------------------
+    // CASE 3 — No performance recorded
+    // ------------------------------
+    return { rank: yourRank ?? "Not in Top 10", neededText: "No performance recorded", progress: 0 };
 }
+
 
 // ------------------------------
 // SORTING + FILTERING
@@ -308,6 +344,46 @@ function renderDashboard(guildName, merged) {
     // Insert overview table
     const tableHTML = renderOverviewTable(guildName, merged);
     resultsDiv.insertAdjacentHTML("beforeend", tableHTML);
+
+    // ⭐ Add row → modal click listeners (NEW)
+    document.querySelectorAll(".overview-row").forEach(row => {
+        row.addEventListener("click", () => {
+            const obj = row.dataset.objective;
+            const skill = merged[obj];
+            const info = getRankInfo(skill);
+
+            const label = skill.type === "score" ? "Score" : "Time (ms)";
+            const yourValue = skill.type === "score" ? skill.yourScore : skill.yourBestTime;
+
+            const modalHTML = `
+                <h2>${obj}</h2>
+                <p><strong>Your ${label}:</strong> ${yourValue ?? "—"}</p>
+                <p><strong>Your Rank:</strong> ${info.rank}</p>
+                <p><strong>Needed:</strong> ${info.neededText}</p>
+
+                <div class="progress-wrapper">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:${info.progress}%;"></div>
+                    </div>
+                    <span class="progress-text">${Math.round(info.progress)}% progress</span>
+                </div>
+
+                <h3>Top 10</h3>
+                <table class="leaderboard">
+                    <tr><th>Rank</th><th>Clan</th><th>${label}</th></tr>
+                    ${skill.top10.map((c, i) => `
+                        <tr>
+                            <td>${i + 1}</td>
+                            <td>${c.clanName}</td>
+                            <td>${skill.type === "score" ? c.score : c.bestTime}</td>
+                        </tr>
+                    `).join("")}
+                </table>
+            `;
+
+            openModal(modalHTML);
+        });
+    });
 
     // Attach listeners
     document.getElementById("sort-select").addEventListener("change", () => {
