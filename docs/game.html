@@ -1,4 +1,4 @@
-vip<!-- using arrow to move box
+<!-- using arrow to move box
 <!DOCTYPE html>
 <html>
 <head>
@@ -873,9 +873,11 @@ save hughscore, enemy fight and health bar
 -->
 
 
-
+<!--hp bar was now missing 
 
 <!-- different zone, shop, enemy in zone, moving through zone-->
+
+<!--hp bar was now missing
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1104,4 +1106,160 @@ save hughscore, enemy fight and health bar
 </body>
 </html>
                       
-            
+  -->
+<!-- hp bar and speed adjusted-->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Box World: Fixed UI & Regen</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
+        canvas { display: block; touch-action: none; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; padding: 15px; display: flex; justify-content: space-between; box-sizing: border-box; pointer-events: none; z-index: 10; }
+        .stat-box { color: white; font-weight: bold; text-shadow: 2px 2px 4px black; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div id="ui-layer">
+        <div class="stat-box">Score: <span id="score">0</span></div>
+        <div class="stat-box">Zone: <span id="zone-id">0,0</span></div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreEl = document.getElementById("score");
+        const zoneEl = document.getElementById("zone-id");
+
+        const ZONES_DATA = {
+            "0,0": { type: "combat", color: "#1a1a1a", name: "Start" },
+            "1,0": { type: "shop", color: "#2c3e50", name: "Shop" },
+            "0,1": { type: "combat", color: "#27ae60", name: "Forest" }
+        };
+
+        let worldX = 0, worldY = 0, score = 0, enemies = [];
+        let player = { 
+            x: 100, y: 100, size: 25, color: "#00d2ff", 
+            vx: 0, vy: 0, speed: 3.5, 
+            hp: 100, maxHp: 100,
+            lastHit: 0 // Track time for regen
+        };
+        let stick = { baseX: 100, baseY: 0, baseRad: 50, headX: 100, headY: 0, active: false };
+
+        function drawBar(x, y, size, curr, max, color) {
+            ctx.fillStyle = "#000"; ctx.fillRect(x, y - 10, size, 4);
+            ctx.fillStyle = color; ctx.fillRect(x, y - 10, (Math.max(0, curr)/max) * size, 4);
+        }
+
+        function checkZoneChange() {
+            let nextX = worldX, nextY = worldY, portal = false;
+            if (player.x < 0) { nextX--; portal = "left"; }
+            else if (player.x > canvas.width - player.size) { nextX++; portal = "right"; }
+            if (player.y < 0) { nextY++; portal = "up"; }
+            else if (player.y > canvas.height - player.size) { nextY--; portal = "down"; }
+
+            if (portal && ZONES_DATA[`${nextX},${nextY}`]) {
+                worldX = nextX; worldY = nextY;
+                if (portal === "left") player.x = canvas.width - player.size;
+                if (portal === "right") player.x = 0;
+                if (portal === "up") player.y = canvas.height - player.size;
+                if (portal === "down") player.y = 0;
+                enterZone();
+            } else if (portal) {
+                player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+                player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+            }
+        }
+
+        function enterZone() {
+            const id = `${worldX},${worldY}`;
+            zoneEl.innerText = id;
+            enemies = [];
+            if (ZONES_DATA[id]?.type === "combat") {
+                for(let i=0; i<4; i++) enemies.push({ x: Math.random()*(canvas.width-20), y: Math.random()*(canvas.height-20), size: 20, hp: 30, maxHp: 30, color: "#f1c40f" });
+            }
+        }
+
+        function runShop() {
+            ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.fillText("SHOP: Touch block to heal (50 pts)", canvas.width/2, canvas.height/2 - 40);
+            ctx.fillStyle = "#f39c12"; ctx.fillRect(canvas.width/2-20, canvas.height/2-20, 40, 40);
+            if (Math.hypot(player.x - canvas.width/2, player.y - canvas.height/2) < 40 && score >= 50 && player.hp < 100) {
+                score -= 50; player.hp = 100; scoreEl.innerText = score;
+            }
+        }
+
+        function update() {
+            player.x += player.vx; player.y += player.vy;
+            checkZoneChange();
+
+            // --- RESTORED REGEN LOGIC ---
+            // Regains 0.1 HP per frame if not hit for 3 seconds
+            if (Date.now() - player.lastHit > 3000 && player.hp < player.maxHp) {
+                player.hp += 0.1;
+            }
+
+            enemies.forEach((e, i) => {
+                if (player.x < e.x + e.size && player.x + player.size > e.x && player.y < e.y + e.size && player.y + player.size > e.y) {
+                    e.hp -= 1; 
+                    player.hp -= 0.5;
+                    player.lastHit = Date.now(); // Reset regen timer on hit
+                    if (e.hp <= 0) { 
+                        enemies.splice(i, 1); 
+                        score += 10; 
+                        scoreEl.innerText = score; 
+                        enemies.push({ x: Math.random()*(canvas.width-20), y: Math.random()*(canvas.height-20), size: 20, hp: 30, maxHp: 30, color: "#f1c40f" }); 
+                    }
+                }
+            });
+            if (player.hp <= 0) location.reload();
+        }
+
+        function draw() {
+            const zone = ZONES_DATA[`${worldX},${worldY}`] || { color: "#1a1a1a" };
+            ctx.fillStyle = zone.color; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (zone.type === "shop") runShop();
+
+            enemies.forEach(e => {
+                ctx.fillStyle = e.color; ctx.fillRect(e.x, e.y, e.size, e.size);
+                drawBar(e.x, e.y, e.size, e.hp, e.maxHp, "red");
+            });
+            ctx.fillStyle = player.color; ctx.fillRect(player.x, player.y, player.size, player.size);
+            drawBar(player.x, player.y, player.size, player.hp, player.maxHp, "#00ff00");
+
+            ctx.beginPath(); ctx.arc(stick.baseX, stick.baseY, stick.baseRad, 0, Math.PI*2);
+            ctx.fillStyle = "rgba(255,255,255,0.1)"; ctx.fill();
+            ctx.beginPath(); ctx.arc(stick.headX, stick.headY, 20, 0, Math.PI*2);
+            ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.fill();
+
+            update(); requestAnimationFrame(draw);
+        }
+
+        function handleInput(tx, ty, isDown) {
+            if (!isDown) { stick.active = false; stick.headX = stick.baseX; stick.headY = stick.baseY; player.vx = 0; player.vy = 0; return; }
+            let dx = tx - stick.baseX, dy = ty - stick.baseY, dist = Math.hypot(dx, dy);
+            if (dist < 100 || stick.active) {
+                stick.active = true;
+                let angle = Math.atan2(dy, dx), clamped = Math.min(dist, stick.baseRad);
+                stick.headX = stick.baseX + Math.cos(angle) * clamped;
+                stick.headY = stick.baseY + Math.sin(angle) * clamped;
+                player.vx = Math.cos(angle) * (clamped / stick.baseRad) * player.speed;
+                player.vy = Math.sin(angle) * (clamped / stick.baseRad) * player.speed;
+            }
+        }
+
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; stick.baseY = canvas.height - 100; });
+        canvas.addEventListener("touchstart", e => handleInput(e.touches[0].clientX, e.touches[0].clientY, true));
+        canvas.addEventListener("touchmove", e => handleInput(e.touches[0].clientX, e.touches[0].clientY, true));
+        canvas.addEventListener("touchend", () => handleInput(0,0,false));
+        window.dispatchEvent(new Event('resize'));
+        enterZone(); draw();
+    </script>
+</body>
+</html>
+
+        
