@@ -361,12 +361,11 @@ function renderDashboard(guildName, merged) {
                 <p><strong>Your ${label}:</strong> ${yourValue ?? "—"}</p>
                 <p><strong>Your Rank:</strong> ${info.rank}</p>
                 <p><strong>Needed:</strong> ${info.neededText}</p>
-                ${obj?.endsWith("kills") 
+                ${obj?.endsWith("Kills") 
                     ? `<p><strong>Requirement:</strong> ${keys}</p>` 
                     : ""
                 }
-                ${info.test ? `<p><strong>Key Requirement:</strong> ${info.requirement}</p>` : ""}
-
+                
                 <div class="progress-wrapper">
                     <div class="progress-bar">
                         <div class="progress-fill" style="width:${info.progress}%;"></div>
