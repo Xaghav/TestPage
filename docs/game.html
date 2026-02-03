@@ -1109,12 +1109,11 @@ save hughscore, enemy fight and health bar
   -->
 <!-- hp bar and speed adjusted-->
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Box World: Fixed UI & Regen</title>
+    <title>Box World: Full Map</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
@@ -1126,6 +1125,7 @@ save hughscore, enemy fight and health bar
 <body>
     <div id="ui-layer">
         <div class="stat-box">Score: <span id="score">0</span></div>
+        <div class="stat-box" id="zone-display">Starting Fields</div>
         <div class="stat-box">Zone: <span id="zone-id">0,0</span></div>
     </div>
     <canvas id="gameCanvas"></canvas>
@@ -1135,21 +1135,46 @@ save hughscore, enemy fight and health bar
         const ctx = canvas.getContext("2d");
         const scoreEl = document.getElementById("score");
         const zoneEl = document.getElementById("zone-id");
+        const nameEl = document.getElementById("zone-display");
 
-        const ZONES_DATA = {
-            "0,0": { type: "combat", color: "#1a1a1a", name: "Start" },
-            "1,0": { type: "shop", color: "#2c3e50", name: "Shop" },
-            "0,1": { type: "combat", color: "#27ae60", name: "Forest" }
-        };
+        // --- 1. FULL REGION CONFIGURATION ---
+        const REGIONS = [
+            // Row 0: Starting Fields (3 screens wide) + Shop
+            { xMin: 0, xMax: 2, yMin: 0, yMax: 0, type: "combat", color: "#1a1a1a", name: "Starting Fields" },
+            { xMin: 3, xMax: 3, yMin: 0, yMax: 0, type: "shop",   color: "#2c3e50", name: "The Merchant" },
+            
+            // Row 1: Green Woods (3 screens wide)
+            { xMin: 0, xMax: 2, yMin: 1, yMax: 1, type: "combat", color: "#1b4d3e", name: "Green Woods" },
+            
+            // Special: Boss Chamber (Overwrites the center of Green Woods at 1,1)
+            { xMin: 1, xMax: 1, yMin: 1, yMax: 1, type: "boss",   color: "#4a0e0e", name: "BOSS CHAMBER" }
+        ];
 
         let worldX = 0, worldY = 0, score = 0, enemies = [];
-        let player = { 
-            x: 100, y: 100, size: 25, color: "#00d2ff", 
-            vx: 0, vy: 0, speed: 3, 
-            hp: 100, maxHp: 100,
-            lastHit: 0 // Track time for regen
-        };
+        let player = { x: 100, y: 100, size: 25, color: "#00d2ff", vx: 0, vy: 0, speed: 3, hp: 100, maxHp: 100, lastHit: 0 };
         let stick = { baseX: 100, baseY: 0, baseRad: 50, headX: 100, headY: 0, active: false };
+
+        // --- 2. PERSISTENCE ---
+        function saveGame() {
+            localStorage.setItem("boxWorldSave", JSON.stringify({ score, worldX, worldY, hp: player.hp }));
+        }
+
+        function loadGame() {
+            const saved = JSON.parse(localStorage.getItem("boxWorldSave"));
+            if (saved && getZone(saved.worldX, saved.worldY)) {
+                score = saved.score; worldX = saved.worldX; worldY = saved.worldY; player.hp = saved.hp;
+            }
+            scoreEl.innerText = score;
+            enterZone();
+        }
+        setInterval(saveGame, 2000);
+
+        // --- 3. LOGIC ENGINES ---
+        function getZone(x, y) {
+            // Find the last matching region (allows Boss Chamber to overwrite Green Woods)
+            let matches = REGIONS.filter(r => x >= r.xMin && x <= r.xMax && y >= r.yMin && y <= r.yMax);
+            return matches[matches.length - 1];
+        }
 
         function drawBar(x, y, size, curr, max, color) {
             ctx.fillStyle = "#000"; ctx.fillRect(x, y - 10, size, 4);
@@ -1157,36 +1182,45 @@ save hughscore, enemy fight and health bar
         }
 
         function checkZoneChange() {
-            let nextX = worldX, nextY = worldY, portal = false;
-            if (player.x < 0) { nextX--; portal = "left"; }
-            else if (player.x > canvas.width - player.size) { nextX++; portal = "right"; }
-            if (player.y < 0) { nextY++; portal = "up"; }
-            else if (player.y > canvas.height - player.size) { nextY--; portal = "down"; }
+            let nX = worldX, nY = worldY, portal = false;
+            if (player.x < 0) { nX--; portal = "L"; }
+            else if (player.x > canvas.width - player.size) { nX++; portal = "R"; }
+            if (player.y < 0) { nY++; portal = "U"; } // Up increases Y
+            else if (player.y > canvas.height - player.size) { nY--; portal = "D"; } // Down decreases Y
 
-            if (portal && ZONES_DATA[`${nextX},${nextY}`]) {
-                worldX = nextX; worldY = nextY;
-                if (portal === "left") player.x = canvas.width - player.size;
-                if (portal === "right") player.x = 0;
-                if (portal === "up") player.y = canvas.height - player.size;
-                if (portal === "down") player.y = 0;
-                enterZone();
-            } else if (portal) {
-                player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
-                player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+            if (portal) {
+                if (getZone(nX, nY)) {
+                    worldX = nX; worldY = nY;
+                    if (portal === "L") player.x = canvas.width - player.size;
+                    if (portal === "R") player.x = 0;
+                    if (portal === "U") player.y = canvas.height - player.size;
+                    if (portal === "D") player.y = 0;
+                    saveGame(); enterZone();
+                } else {
+                    player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+                    player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+                }
             }
         }
 
         function enterZone() {
-            const id = `${worldX},${worldY}`;
-            zoneEl.innerText = id;
+            const zone = getZone(worldX, worldY);
+            zoneEl.innerText = `${worldX},${worldY}`;
+            nameEl.innerText = zone.name;
             enemies = [];
-            if (ZONES_DATA[id]?.type === "combat") {
-                for(let i=0; i<4; i++) enemies.push({ x: Math.random()*(canvas.width-20), y: Math.random()*(canvas.height-20), size: 20, hp: 30, maxHp: 30, color: "#f1c40f" });
+            if (zone.type === "combat") {
+                for(let i=0; i<4; i++) enemies.push(createEnemy(20, 30, "#f1c40f"));
+            } else if (zone.type === "boss") {
+                enemies.push(createEnemy(80, 500, "#9b59b6"));
             }
         }
 
+        function createEnemy(size, hp, color) {
+            return { x: Math.random()*(canvas.width-size), y: Math.random()*(canvas.height-size), size, hp, maxHp: hp, color };
+        }
+
         function runShop() {
-            ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.fillText("SHOP: Touch block to heal (50 pts)", canvas.width/2, canvas.height/2 - 40);
+            ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.fillText("HEAL (50 pts)", canvas.width/2, canvas.height/2 - 40);
             ctx.fillStyle = "#f39c12"; ctx.fillRect(canvas.width/2-20, canvas.height/2-20, 40, 40);
             if (Math.hypot(player.x - canvas.width/2, player.y - canvas.height/2) < 40 && score >= 50 && player.hp < 100) {
                 score -= 50; player.hp = 100; scoreEl.innerText = score;
@@ -1196,31 +1230,22 @@ save hughscore, enemy fight and health bar
         function update() {
             player.x += player.vx; player.y += player.vy;
             checkZoneChange();
-
-            // --- RESTORED REGEN LOGIC ---
-            // Regains 0.1 HP per frame if not hit for 3 seconds
-            if (Date.now() - player.lastHit > 3000 && player.hp < player.maxHp) {
-                player.hp += 0.1;
-            }
+            if (Date.now() - player.lastHit > 3000 && player.hp < 100) player.hp += 0.1;
 
             enemies.forEach((e, i) => {
                 if (player.x < e.x + e.size && player.x + player.size > e.x && player.y < e.y + e.size && player.y + player.size > e.y) {
-                    e.hp -= 1; 
-                    player.hp -= 0.5;
-                    player.lastHit = Date.now(); // Reset regen timer on hit
+                    e.hp -= 1; player.hp -= 0.5; player.lastHit = Date.now();
                     if (e.hp <= 0) { 
-                        enemies.splice(i, 1); 
-                        score += 10; 
-                        scoreEl.innerText = score; 
-                        enemies.push({ x: Math.random()*(canvas.width-20), y: Math.random()*(canvas.height-20), size: 20, hp: 30, maxHp: 30, color: "#f1c40f" }); 
+                        enemies.splice(i, 1); score += (e.maxHp === 500 ? 500 : 10); scoreEl.innerText = score; 
+                        if (getZone(worldX, worldY).type === "combat") enemies.push(createEnemy(20, 30, "#f1c40f"));
                     }
                 }
             });
-            if (player.hp <= 0) location.reload();
+            if (player.hp <= 0) { localStorage.removeItem("boxWorldSave"); location.reload(); }
         }
 
         function draw() {
-            const zone = ZONES_DATA[`${worldX},${worldY}`] || { color: "#1a1a1a" };
+            const zone = getZone(worldX, worldY);
             ctx.fillStyle = zone.color; ctx.fillRect(0, 0, canvas.width, canvas.height);
             if (zone.type === "shop") runShop();
 
@@ -1231,6 +1256,7 @@ save hughscore, enemy fight and health bar
             ctx.fillStyle = player.color; ctx.fillRect(player.x, player.y, player.size, player.size);
             drawBar(player.x, player.y, player.size, player.hp, player.maxHp, "#00ff00");
 
+            // Joystick
             ctx.beginPath(); ctx.arc(stick.baseX, stick.baseY, stick.baseRad, 0, Math.PI*2);
             ctx.fillStyle = "rgba(255,255,255,0.1)"; ctx.fill();
             ctx.beginPath(); ctx.arc(stick.headX, stick.headY, 20, 0, Math.PI*2);
@@ -1244,22 +1270,21 @@ save hughscore, enemy fight and health bar
             let dx = tx - stick.baseX, dy = ty - stick.baseY, dist = Math.hypot(dx, dy);
             if (dist < 100 || stick.active) {
                 stick.active = true;
-                let angle = Math.atan2(dy, dx), clamped = Math.min(dist, stick.baseRad);
-                stick.headX = stick.baseX + Math.cos(angle) * clamped;
-                stick.headY = stick.baseY + Math.sin(angle) * clamped;
-                player.vx = Math.cos(angle) * (clamped / stick.baseRad) * player.speed;
-                player.vy = Math.sin(angle) * (clamped / stick.baseRad) * player.speed;
+                let angle = Math.atan2(dy, dx), cl = Math.min(dist, stick.baseRad);
+                stick.headX = stick.baseX + Math.cos(angle) * cl;
+                stick.headY = stick.baseY + Math.sin(angle) * cl;
+                player.vx = Math.cos(angle) * (cl / stick.baseRad) * player.speed;
+                player.vy = Math.sin(angle) * (cl / stick.baseRad) * player.speed;
             }
         }
 
         window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; stick.baseY = canvas.height - 100; });
-        canvas.addEventListener("touchstart", e => handleInput(e.touches[0].clientX, e.touches[0].clientY, true));
-        canvas.addEventListener("touchmove", e => handleInput(e.touches[0].clientX, e.touches[0].clientY, true));
+        canvas.addEventListener("touchstart", e => { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY, true); }, {passive:false});
+        canvas.addEventListener("touchmove", e => { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY, true); }, {passive:false});
         canvas.addEventListener("touchend", () => handleInput(0,0,false));
         window.dispatchEvent(new Event('resize'));
-        enterZone(); draw();
+        loadGame(); draw();
     </script>
 </body>
 </html>
 
-        
