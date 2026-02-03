@@ -1260,32 +1260,70 @@ save hughscore, enemy fight and health bar
             });
         }
 
+        // function checkZoneChange() {
+        //     let nX = worldX, nY = worldY, portal = false;
+        //     if (player.x < 0) { nX--; portal = "L"; }
+        //     else if (player.x > canvas.width - player.size) { nX++; portal = "R"; }
+        //     if (player.y < 0) { nY++; portal = "U"; }
+        //     else if (player.y > canvas.height - player.size) { nY--; portal = "D"; }
+
+        //     if (portal) {
+        //         if (getZone(nX, nY)) {
+        //             worldX = nX; worldY = nY;
+        //             if (portal === "L") player.x = canvas.width - player.size;
+        //             if (portal === "R") player.x = 0;
+        //             if (portal === "U") player.y = canvas.height - player.size;
+        //             if (portal === "D") player.y = 0;
+        //             saveGame(); enterZone();
+        //         } else {
+        //             return;
+        //         //     player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+        //         //     player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+        //         }
+        //     }
+        // }
+
+        // function drawBar(x, y, size, curr, max, color) {
+        //     ctx.fillStyle = "#000"; ctx.fillRect(x, y - 12, size, 6);
+        //     ctx.fillStyle = color; ctx.fillRect(x, y - 12, (Math.max(0, curr)/max) * size, 6);
+        // }
         function checkZoneChange() {
             let nX = worldX, nY = worldY, portal = false;
+        
             if (player.x < 0) { nX--; portal = "L"; }
             else if (player.x > canvas.width - player.size) { nX++; portal = "R"; }
+        
             if (player.y < 0) { nY++; portal = "U"; }
             else if (player.y > canvas.height - player.size) { nY--; portal = "D"; }
-
-            if (portal) {
-                if (getZone(nX, nY)) {
-                    worldX = nX; worldY = nY;
-                    if (portal === "L") player.x = canvas.width - player.size;
-                    if (portal === "R") player.x = 0;
-                    if (portal === "U") player.y = canvas.height - player.size;
-                    if (portal === "D") player.y = 0;
-                    saveGame(); enterZone();
-                } else {
-                    player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
-                    player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
-                }
+        
+            if (!portal) return;
+        
+            // Check if next tile is inside any defined region
+            const nextZone = REGIONS.find(r =>
+                nX >= r.xMin && nX <= r.xMax &&
+                nY >= r.yMin && nY <= r.yMax
+            );
+        
+            if (!nextZone) {
+                // INVALID TILE → snap player back inside current zone
+                player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+                player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+                return;
             }
+        
+            // VALID TILE → perform world transition
+            worldX = nX;
+            worldY = nY;
+        
+            if (portal === "L") player.x = canvas.width - player.size;
+            if (portal === "R") player.x = 0;
+            if (portal === "U") player.y = canvas.height - player.size;
+            if (portal === "D") player.y = 0;
+        
+            saveGame();
+            enterZone();
         }
 
-        function drawBar(x, y, size, curr, max, color) {
-            ctx.fillStyle = "#000"; ctx.fillRect(x, y - 12, size, 6);
-            ctx.fillStyle = color; ctx.fillRect(x, y - 12, (Math.max(0, curr)/max) * size, 6);
-        }
 
         function handleInput(tx, ty, isDown) {
             if (currentState !== STATES.PLAYING) return;
