@@ -354,13 +354,18 @@ function renderDashboard(guildName, merged) {
 
             const label = skill.type === "score" ? "Score" : "Time (ms)";
             const yourValue = skill.type === "score" ? skill.yourScore : skill.yourBestTime;
+            const keys = "<>< [][";
 
             const modalHTML = `
                 <h2>${obj}</h2>
                 <p><strong>Your ${label}:</strong> ${yourValue ?? "—"}</p>
                 <p><strong>Your Rank:</strong> ${info.rank}</p>
                 <p><strong>Needed:</strong> ${info.neededText}</p>
-
+                ${obj?.endsWith("Kills") 
+                    ? `<p><strong>{}{:</strong> ${keys}</p>` 
+                    : ""
+                }
+                
                 <div class="progress-wrapper">
                     <div class="progress-bar">
                         <div class="progress-fill" style="width:${info.progress}%;"></div>
