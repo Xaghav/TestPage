@@ -49,27 +49,63 @@
     <title>Box Movement</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { margin: 0; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
+        /* Force full screen and hide scrollbars */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
         canvas { display: block; touch-action: none; }
-        #label { position: absolute; top: 10px; width: 100%; text-align: center; color: white; pointer-events: none; }
+        
+        /* Clean, non-intrusive Home link */
+        #nav-overlay { 
+            position: absolute; 
+            top: 15px; 
+            left: 15px; 
+            z-index: 10;
+        }
+        #nav-overlay a {
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: 0.2s;
+        }
+        #nav-overlay a:hover { background: rgba(0, 0, 0, 0.5); color: white; }
     </style>
 </head>
 <body>
-    <p style="text-align:center;"><a href="index.html">Back to Home</a></p>
+    <div id="nav-overlay">
+        <a href="index.html">← Home</a>
+    </div>
     <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
+        // --- Stick Configuration ---
+        let stick = {
+            baseX: 100,
+            baseY: 0,
+            baseRad: 60,
+            headX: 100,
+            headY: 0,
+            headRad: 30,
+            active: false
+        };
+
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            // Reposition stick relative to new height
+            stick.baseY = canvas.height - 100;
+            stick.headX = stick.baseX;
+            stick.headY = stick.baseY;
         }
         window.addEventListener('resize', resize);
         resize();
 
-        // --- Game Objects ---
+        // --- Box Object ---
         let box = {
             x: canvas.width / 2 - 25,
             y: canvas.height / 2 - 25,
@@ -77,24 +113,10 @@
             color: "#e74c3c",
             vx: 0,
             vy: 0,
-            speed: 7 // Max pixels per frame
+            speed: 7
         };
 
-        let stick = {
-            baseX: 120,
-            baseY: 0, // Set in resize/init
-            baseRad: 70,
-            headX: 120,
-            headY: 0,
-            headRad: 35,
-            active: false,
-            touchId: null
-        };
-        stick.baseY = canvas.height - 120;
-        stick.headY = stick.baseY;
-
-        // --- Input Handling ---
-        function handleInput(inputX, inputY, isDown, id = null) {
+        function handleInput(inputX, inputY, isDown) {
             if (!isDown) {
                 stick.active = false;
                 stick.headX = stick.baseX;
@@ -108,25 +130,21 @@
             let dy = inputY - stick.baseY;
             let dist = Math.sqrt(dx * dx + dy * dy);
 
-            // Start stick if clicking near the base or already active
-            if (dist < stick.baseRad * 1.5 || stick.active) {
+            if (dist < stick.baseRad * 2 || stick.active) {
                 stick.active = true;
-                
                 let angle = Math.atan2(dy, dx);
-                // Clamp the head inside the base radius
                 let clampedDist = Math.min(dist, stick.baseRad);
                 
                 stick.headX = stick.baseX + Math.cos(angle) * clampedDist;
                 stick.headY = stick.baseY + Math.sin(angle) * clampedDist;
 
-                // Calculate velocity percentage (0 to 1)
                 let power = clampedDist / stick.baseRad;
                 box.vx = Math.cos(angle) * power * box.speed;
                 box.vy = Math.sin(angle) * power * box.speed;
             }
         }
 
-        // --- Events ---
+        // --- Event Listeners ---
         canvas.addEventListener("mousedown", e => handleInput(e.clientX, e.clientY, true));
         window.addEventListener("mousemove", e => { if(stick.active) handleInput(e.clientX, e.clientY, true); });
         window.addEventListener("mouseup", () => handleInput(0, 0, false));
@@ -144,13 +162,10 @@
 
         canvas.addEventListener("touchend", () => handleInput(0, 0, false));
 
-        // --- Game Loop ---
         function update() {
-            // Update box position
             box.x += box.vx;
             box.y += box.vy;
 
-            // Screen boundaries
             if (box.x < 0) box.x = 0;
             if (box.y < 0) box.y = 0;
             if (box.x + box.size > canvas.width) box.x = canvas.width - box.size;
@@ -158,30 +173,29 @@
         }
 
         function draw() {
-            // Clear Background
             ctx.fillStyle = "#2c3e50";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw Joystick Base
+            // Joystick Base
             ctx.beginPath();
             ctx.arc(stick.baseX, stick.baseY, stick.baseRad, 0, Math.PI * 2);
             ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
             ctx.fill();
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
             ctx.stroke();
 
-            // Draw Joystick Head
+            // Joystick Head
             ctx.beginPath();
             ctx.arc(stick.headX, stick.headY, stick.headRad, 0, Math.PI * 2);
-            ctx.fillStyle = "#ecf0f1";
+            ctx.fillStyle = "rgba(236, 240, 241, 0.8)";
             ctx.fill();
 
-            // Draw the Box
+            // Box
             ctx.fillStyle = box.color;
             ctx.shadowBlur = 15;
             ctx.shadowColor = box.color;
             ctx.fillRect(box.x, box.y, box.size, box.size);
-            ctx.shadowBlur = 0; // Reset shadow for other drawings
+            ctx.shadowBlur = 0;
 
             update();
             requestAnimationFrame(draw);
