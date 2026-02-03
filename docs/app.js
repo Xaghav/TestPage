@@ -354,7 +354,7 @@ function renderDashboard(guildName, merged) {
 
             const label = skill.type === "score" ? "Score" : "Time (ms)";
             const yourValue = skill.type === "score" ? skill.yourScore : skill.yourBestTime;
-            const keys = 10;
+            const keys = "<>< [][";
 
             const modalHTML = `
                 <h2>${obj}</h2>
@@ -362,7 +362,7 @@ function renderDashboard(guildName, merged) {
                 <p><strong>Your Rank:</strong> ${info.rank}</p>
                 <p><strong>Needed:</strong> ${info.neededText}</p>
                 ${obj?.endsWith("Kills") 
-                    ? `<p><strong>Requirement:</strong> ${keys}</p>` 
+                    ? `<p><strong>{}{:</strong> ${keys}</p>` 
                     : ""
                 }
                 
