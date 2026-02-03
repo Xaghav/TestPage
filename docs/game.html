@@ -400,7 +400,6 @@
     </script>
 </body>
 </html>
--->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -679,6 +678,189 @@
     </script>
 </body>
 </html>
+-->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Box Combat Persistent</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
+        canvas { display: block; touch-action: none; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; padding: 15px; display: flex; justify-content: space-between; box-sizing: border-box; pointer-events: none; }
+        .stat-box { color: white; font-weight: bold; text-shadow: 2px 2px 4px black; }
+        #nav-link { background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 20px; color: #fff; text-decoration: none; pointer-events: auto; }
+    </style>
+</head>
+<body>
+    <div id="ui-layer">
+        <a id="nav-link" href="index.html">← Home</a>
+        <div class="stat-box">Score: <span id="score">0</span> | Best: <span id="best">0</span></div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreEl = document.getElementById("score");
+        const bestEl = document.getElementById("best");
+
+        // --- Game State Variables ---
+        let score = 0;
+        let highScore = 0;
+        let enemies = [];
+        const ENEMY_COUNT = 4;
+
+        let player = {
+            x: 100, y: 100, size: 50, color: "#e74c3c",
+            vx: 0, vy: 0, speed: 6,
+            hp: 100, maxHp: 100, lastHit: 0
+        };
+
+        let stick = { baseX: 100, baseY: 0, baseRad: 60, headX: 100, headY: 0, headRad: 30, active: false };
+
+        // --- 1. PERSISTENCE LOGIC (LOAD/SAVE) ---
+        function loadGame() {
+            const savedData = localStorage.getItem("boxCombatSave");
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                score = data.score || 0;
+                highScore = data.highScore || 0;
+                player.hp = data.playerHp !== undefined ? data.playerHp : 100;
+                player.x = data.playerX || 100;
+                player.y = data.playerY || 100;
+            } else {
+                highScore = localStorage.getItem("boxHighScore") || 0;
+                player.x = window.innerWidth / 2;
+                player.y = window.innerHeight / 2;
+            }
+            scoreEl.innerText = score;
+            bestEl.innerText = highScore;
+        }
+
+        function saveGame() {
+            const dataToSave = {
+                score: score,
+                highScore: Math.max(score, highScore),
+                playerHp: player.hp,
+                playerX: player.x,
+                playerY: player.y
+            };
+            localStorage.setItem("boxCombatSave", JSON.stringify(dataToSave));
+        }
+
+        // Auto-save every 2 seconds to ensure reload consistency
+        setInterval(saveGame, 2000);
+
+        // --- 2. GAME LOGIC ---
+        function spawnEnemy() {
+            const size = player.size / 1.3;
+            return {
+                x: Math.random() * (canvas.width - size),
+                y: Math.random() * (canvas.height - size),
+                size: size, hp: 40, maxHp: 40, color: "#f1c40f"
+            };
+        }
+
+        function resetGame() {
+            if (score > highScore) highScore = score;
+            score = 0;
+            player.hp = 100;
+            player.x = canvas.width / 2;
+            player.y = canvas.height / 2;
+            saveGame(); // Immediate save on death
+            location.reload(); // Hard reset to clear state
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            stick.baseY = canvas.height - 100;
+            stick.headX = stick.baseX; stick.headY = stick.baseY;
+        }
+
+        function handleInput(tx, ty, isDown) {
+            if (!isDown) { stick.active = false; stick.headX = stick.baseX; stick.headY = stick.baseY; player.vx = 0; player.vy = 0; return; }
+            let dx = tx - stick.baseX; let dy = ty - stick.baseY;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < stick.baseRad * 2 || stick.active) {
+                stick.active = true;
+                let angle = Math.atan2(dy, dx);
+                let clampedDist = Math.min(dist, stick.baseRad);
+                stick.headX = stick.baseX + Math.cos(angle) * clampedDist;
+                stick.headY = stick.baseY + Math.sin(angle) * clampedDist;
+                player.vx = Math.cos(angle) * (clampedDist / stick.baseRad) * player.speed;
+                player.vy = Math.sin(angle) * (clampedDist / stick.baseRad) * player.speed;
+            }
+        }
+
+        // Event Listeners
+        canvas.addEventListener("mousedown", e => handleInput(e.clientX, e.clientY, true));
+        window.addEventListener("mousemove", e => stick.active && handleInput(e.clientX, e.clientY, true));
+        window.addEventListener("mouseup", () => handleInput(0,0,false));
+        canvas.addEventListener("touchstart", e => { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY, true); }, {passive:false});
+        canvas.addEventListener("touchmove", e => { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY, true); }, {passive:false});
+        canvas.addEventListener("touchend", () => handleInput(0,0,false));
+
+        function drawBar(x, y, size, curr, max, color) {
+            ctx.fillStyle = "#000"; ctx.fillRect(x, y - 12, size, 6);
+            ctx.fillStyle = color; ctx.fillRect(x, y - 12, (Math.max(0, curr)/max) * size, 6);
+        }
+
+        function update() {
+            player.x += player.vx; player.y += player.vy;
+            if (Date.now() - player.lastHit > 3000 && player.hp < player.maxHp) player.hp += 0.05;
+            player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+            player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let e = enemies[i];
+                if (player.x < e.x + e.size && player.x + player.size > e.x &&
+                    player.y < e.y + e.size && player.y + player.size > e.y) {
+                    e.hp -= 1; player.hp -= 0.6; player.lastHit = Date.now();
+                    if (e.hp <= 0) {
+                        enemies.splice(i, 1); score++; scoreEl.innerText = score;
+                        enemies.push(spawnEnemy());
+                    }
+                }
+            }
+            if (player.hp <= 0) resetGame();
+        }
+
+        function draw() {
+            ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0,0,canvas.width,canvas.height);
+            
+            // Joystick
+            ctx.beginPath(); ctx.arc(stick.baseX, stick.baseY, stick.baseRad, 0, Math.PI*2);
+            ctx.fillStyle = "rgba(255,255,255,0.05)"; ctx.fill();
+            ctx.beginPath(); ctx.arc(stick.headX, stick.headY, stick.headRad, 0, Math.PI*2);
+            ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.fill();
+
+            // Entities
+            enemies.forEach(e => {
+                ctx.fillStyle = e.color; ctx.fillRect(e.x, e.y, e.size, e.size);
+                drawBar(e.x, e.y, e.size, e.hp, e.maxHp, "#f1c40f");
+            });
+            ctx.fillStyle = player.color; ctx.fillRect(player.x, player.y, player.size, player.size);
+            drawBar(player.x, player.y, player.size, player.hp, player.maxHp, "#2ecc71");
+
+            update();
+            requestAnimationFrame(draw);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        loadGame();
+        for(let i=0; i<ENEMY_COUNT; i++) enemies.push(spawnEnemy());
+        draw();
+    </script>
+</body>
+</html>
+
+
 
 
                         
