@@ -206,7 +206,8 @@
     </script>
 </body>
 </html>
--->
+
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -399,3 +400,285 @@
     </script>
 </body>
 </html>
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Box Combat Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #1a1a1a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        canvas { display: block; touch-action: none; }
+        
+        /* UI Layer */
+        #ui-layer { 
+            position: absolute; 
+            top: 0; left: 0; width: 100%; 
+            padding: 15px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            box-sizing: border-box; 
+            pointer-events: none; 
+        }
+        
+        .stat-group { display: flex; gap: 15px; pointer-events: none; }
+        
+        .stat-box { 
+            color: white; 
+            font-size: 18px; 
+            font-weight: bold; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); 
+        }
+
+        #nav-link { 
+            background: rgba(255,255,255,0.1); 
+            padding: 8px 15px; 
+            border-radius: 20px; 
+            color: #fff; 
+            text-decoration: none; 
+            font-size: 14px; 
+            pointer-events: auto;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        #save-indicator {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #4CAF50;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <a id="nav-link" href="index.html">← Home</a>
+        <div class="stat-group">
+            <div class="stat-box">Score: <span id="score">0</span></div>
+            <div class="stat-box">Best: <span id="best">0</span></div>
+        </div>
+    </div>
+
+    <div id="save-indicator">Saving...</div>
+    
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreEl = document.getElementById("score");
+        const bestEl = document.getElementById("best");
+        const saveInd = document.getElementById("save-indicator");
+
+        // --- Game State ---
+        let score = 0;
+        let highScore = 0;
+        let enemies = [];
+        const ENEMY_COUNT = 4;
+
+        // --- Player Object ---
+        let player = {
+            x: 0, y: 0, size: 50, color: "#e74c3c",
+            vx: 0, vy: 0, speed: 6,
+            hp: 100, maxHp: 100, lastHit: 0
+        };
+
+        // --- Joystick Object ---
+        let stick = { baseX: 100, baseY: 0, baseRad: 60, headX: 100, headY: 0, headRad: 30, active: false };
+
+        // --- 1. Persistence Logic (LocalStorage) ---
+        function loadData() {
+            highScore = parseInt(localStorage.getItem("boxHighScore")) || 0;
+            score = parseInt(localStorage.getItem("boxCurrentScore")) || 0;
+            bestEl.innerText = highScore;
+            scoreEl.innerText = score;
+        }
+
+        function saveToBrowser(isManual = false) {
+            localStorage.setItem("boxCurrentScore", score);
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem("boxHighScore", highScore);
+                bestEl.innerText = highScore;
+            }
+            
+            // Show "Saving" indicator visually
+            saveInd.style.opacity = 1;
+            setTimeout(() => saveInd.style.opacity = 0, 1000);
+        }
+
+        // Auto-save every 5 seconds
+        setInterval(() => saveToBrowser(), 5000);
+
+        // --- 2. Game Setup ---
+        function spawnEnemy() {
+            const size = player.size / 1.3;
+            return {
+                x: Math.random() * (canvas.width - size),
+                y: Math.random() * (canvas.height - size),
+                size: size,
+                hp: 40, maxHp: 40,
+                color: "#f1c40f"
+            };
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            stick.baseY = canvas.height - 100;
+            stick.headX = stick.baseX;
+            stick.headY = stick.baseY;
+        }
+
+        function resetGame() {
+            saveToBrowser(); // Save high score immediately on death
+            score = 0;
+            scoreEl.innerText = score;
+            player.hp = player.maxHp;
+            player.x = canvas.width / 2 - 25;
+            player.y = canvas.height / 2 - 25;
+            enemies = [];
+            for(let i=0; i<ENEMY_COUNT; i++) enemies.push(spawnEnemy());
+        }
+
+        // --- 3. Input Handling ---
+        function handleInput(tx, ty, isDown) {
+            if (!isDown) {
+                stick.active = false;
+                stick.headX = stick.baseX; stick.headY = stick.baseY;
+                player.vx = 0; player.vy = 0;
+                return;
+            }
+
+            let dx = tx - stick.baseX;
+            let dy = ty - stick.baseY;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+
+            if (dist < stick.baseRad * 2 || stick.active) {
+                stick.active = true;
+                let angle = Math.atan2(dy, dx);
+                let clampedDist = Math.min(dist, stick.baseRad);
+                
+                stick.headX = stick.baseX + Math.cos(angle) * clampedDist;
+                stick.headY = stick.baseY + Math.sin(angle) * clampedDist;
+
+                let power = clampedDist / stick.baseRad;
+                player.vx = Math.cos(angle) * power * player.speed;
+                player.vy = Math.sin(angle) * power * player.speed;
+            }
+        }
+
+        // Mouse Events
+        canvas.addEventListener("mousedown", e => handleInput(e.clientX, e.clientY, true));
+        window.addEventListener("mousemove", e => { if(stick.active) handleInput(e.clientX, e.clientY, true); });
+        window.addEventListener("mouseup", () => handleInput(0, 0, false));
+
+        // Touch Events
+        canvas.addEventListener("touchstart", e => {
+            const t = e.touches[0];
+            handleInput(t.clientX, t.clientY, true);
+        }, {passive: false});
+        canvas.addEventListener("touchmove", e => {
+            e.preventDefault();
+            const t = e.touches[0];
+            handleInput(t.clientX, t.clientY, true);
+        }, {passive: false});
+        canvas.addEventListener("touchend", () => handleInput(0, 0, false));
+
+        // --- 4. Core Logic ---
+        function drawBar(x, y, size, current, max, color) {
+            ctx.fillStyle = "#000";
+            ctx.fillRect(x, y - 12, size, 6);
+            ctx.fillStyle = color;
+            let width = Math.max(0, (current / max) * size);
+            ctx.fillRect(x, y - 12, width, 6);
+        }
+
+        function update() {
+            player.x += player.vx;
+            player.y += player.vy;
+
+            // Passive Regen: Heal 2 HP per second if not hit for 3 seconds
+            if (Date.now() - player.lastHit > 3000 && player.hp < player.maxHp) {
+                player.hp += 0.05; 
+            }
+
+            // Boundary Check
+            player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+            player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+
+            // Combat Check
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let e = enemies[i];
+                if (player.x < e.x + e.size && player.x + player.size > e.x &&
+                    player.y < e.y + e.size && player.y + player.size > e.y) {
+                    
+                    e.hp -= 1.5;      // Player damage to enemy
+                    player.hp -= 0.8; // Enemy damage to player
+                    player.lastHit = Date.now();
+
+                    if (e.hp <= 0) {
+                        enemies.splice(i, 1);
+                        score++;
+                        scoreEl.innerText = score;
+                        enemies.push(spawnEnemy());
+                    }
+                }
+            }
+
+            if (player.hp <= 0) resetGame();
+        }
+
+        function draw() {
+            ctx.fillStyle = "#1a1a1a";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Joystick Base
+            ctx.beginPath();
+            ctx.arc(stick.baseX, stick.baseY, stick.baseRad, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+            ctx.fill();
+
+            // Joystick Head
+            ctx.beginPath();
+            ctx.arc(stick.headX, stick.headY, stick.headRad, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+            ctx.fill();
+
+            // Enemies
+            enemies.forEach(e => {
+                ctx.fillStyle = e.color;
+                ctx.fillRect(e.x, e.y, e.size, e.size);
+                drawBar(e.x, e.y, e.size, e.hp, e.maxHp, "#f1c40f");
+            });
+
+            // Player
+            ctx.fillStyle = player.color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = player.color;
+            ctx.fillRect(player.x, player.y, player.size, player.size);
+            ctx.shadowBlur = 0;
+            drawBar(player.x, player.y, player.size, player.hp, player.maxHp, "#2ecc71");
+
+            update();
+            requestAnimationFrame(draw);
+        }
+
+        // Initialize
+        window.addEventListener('resize', resize);
+        loadData();
+        resize();
+        resetGame(); // Populate enemies
+        draw();
+    </script>
+</body>
+</html>
+
+
+                        
