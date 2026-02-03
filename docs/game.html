@@ -1141,6 +1141,10 @@ save hughscore, enemy fight and health bar
         const zoneIdEl = document.getElementById("zone-id");
         const zoneNameEl = document.getElementById("zone-display");
 
+        const STATES = { PLAYING: 0, GAMEOVER: 1 };
+        let currentState = STATES.PLAYING;
+
+
         // --- 1. REGION CONFIGURATION (Scalable to 1000+) ---
         const REGIONS = [
             { xMin: 0, xMax: 2, yMin: 0, yMax: 0, type: "combat", color: "#1a1a1a", name: "Starting Fields" },
@@ -1184,6 +1188,7 @@ save hughscore, enemy fight and health bar
             }
             scoreEl.innerText = score;
             bestEl.innerText = highScore;
+            currentState = STATES.PLAYING;
             enterZone();
         }
         setInterval(saveGame, 2000);
@@ -1243,6 +1248,7 @@ save hughscore, enemy fight and health bar
         }
 
         function handleInput(tx, ty, isDown) {
+            if (currentState !== STATES.PLAYING) return;
             if (!isDown) { stick.active = false; stick.headX = stick.baseX; stick.headY = stick.baseY; player.vx = 0; player.vy = 0; return; }
             let dx = tx - stick.baseX, dy = ty - stick.baseY, dist = Math.hypot(dx, dy);
             if (dist < 120 || stick.active) {
@@ -1256,6 +1262,8 @@ save hughscore, enemy fight and health bar
         }
 
         function update() {
+            if (currentState !== STATES.PLAYING) return; // Logic stops instantly on death
+
             player.x += player.vx; player.y += player.vy;
             checkZoneChange();
             
@@ -1278,27 +1286,28 @@ save hughscore, enemy fight and health bar
             }
             
             if (player.hp <= 0) {
-            // 1. Update High Score (so they don't lose their best record)
-            highScore = Math.max(score, highScore);
-            localStorage.setItem("boxHighScore", highScore);
+                currentState = STATES.GAMEOVER; // Freeze logic
+                // 1. Update High Score (so they don't lose their best record)
+                highScore = Math.max(score, highScore);
+                localStorage.setItem("boxHighScore", highScore);
 
-            // 2. Prepare the Reset Data
-            const resetData = {
-                score: 0,
-                highScore: highScore,
-                worldX: 0,   // Back to start
-                worldY: 0,   // Back to start
-                playerHp: 100 // Full health
-            };
+                // 2. Prepare the Reset Data
+                const resetData = {
+                    score: 0,
+                    highScore: highScore,
+                    worldX: 0,   // Back to start
+                    worldY: 0,   // Back to start
+                    playerHp: 100 // Full health
+                    };
 
-             // 3. Overwrite the save with the "Fresh Start" data
-            localStorage.setItem("boxCombatWorldSave", JSON.stringify(resetData));
+                 // 3. Overwrite the save with the "Fresh Start" data
+                 localStorage.setItem("boxCombatWorldSave", JSON.stringify(resetData));
+                
+                 setTimeout(() => location.reload(), 500); //few second delay so user can see death,before resume
+                 
+                }
 
-             // 4. Reload to apply changes
-            location.reload(); 
             }
-
-        }
 
         function draw() {
             const zone = getZone(worldX, worldY);
