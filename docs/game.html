@@ -1107,7 +1107,7 @@ save hughscore, enemy fight and health bar
 </html>
                       
   -->
-<!-- hp bar and speed adjusted, zone, extended same zone, -->
+<!-- hp bar and speed adjusted, zone, extended same zone,added state and readd uinfor save -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1121,6 +1121,15 @@ save hughscore, enemy fight and health bar
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; padding: 15px; display: flex; justify-content: space-between; box-sizing: border-box; pointer-events: none; z-index: 10; }
         .stat-box { color: white; font-weight: bold; text-shadow: 2px 2px 4px black; }
         #nav-link { background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 20px; color: #fff; text-decoration: none; pointer-events: auto; }
+        #save-indicator {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #4CAF50;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
     </style>
 </head>
 <body>
@@ -1131,6 +1140,8 @@ save hughscore, enemy fight and health bar
             <small id="zone-display">Region</small> (<span id="zone-id">0,0</span>)
         </div>
     </div>
+    <div id="save-indicator">Saving...</div>
+    
     <canvas id="gameCanvas"></canvas>
 
     <script>
@@ -1175,6 +1186,9 @@ save hughscore, enemy fight and health bar
                 worldX, worldY, playerHp: player.hp
             };
             localStorage.setItem("boxCombatWorldSave", JSON.stringify(data));
+            // Show "Saving" indicator visually
+            saveInd.style.opacity = 1;
+            setTimeout(() => saveInd.style.opacity = 0, 1000);
         }
 
         function loadGame() {
