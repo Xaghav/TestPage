@@ -2,7 +2,7 @@
 # 📦 Box World RPG
 A persistent, region-based action RPG built entirely with JavaScript and HTML5 Canvas.
 
-**🎮 [PLAY NOW](https://xaghav.github.io)**
+**🎮 [PLAY NOW](https://xaghav.github.io/TestPage/game.html)**
 
 ---
 
