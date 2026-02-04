@@ -38,9 +38,10 @@ The specific game balance, region layout, and "Box World" branding are proprieta
 ---
 
 ## ☕ Support the Developer
-If you enjoy hunting boxes in this world, consider supporting the development of new regions and features!
+If you enjoy hunting boxes in this world, consider supporting the development of new regions and features
 
-[Buy Me A Coffee](buymeacoffee.com/Xaghav)
+
+**🎮 [Buy me Coffee](buymeacoffee.com/Xaghav)**
 
 ---
 *Built with ❤️ by [Xaghav](https://github.com)*
